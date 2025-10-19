@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'app/theme/app_theme.dart';
-import 'app/routes/app_routes.dart';
-import 'app/routes/app_pages.dart';
-import 'app/utils/theme_provider.dart';
+import 'core/theme/app_theme.dart';
+import 'core/routes/app_routes.dart';
+import 'core/routes/app_pages.dart';
+import 'core/utils/theme_provider.dart';
 
 void main() {
   runApp(

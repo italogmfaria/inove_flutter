@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/dev_placeholder.dart';
+import '../../widgets/background_decoration.dart';
 
 class VerificarCodigoView extends StatefulWidget {
   const VerificarCodigoView({super.key});
@@ -22,8 +23,11 @@ class _VerificarCodigoViewState extends State<VerificarCodigoView> {
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
-        ),      ),
-      body: const DevPlaceholder(),
+        ),
+      ),
+      body: const BackgroundDecoration(
+        child: DevPlaceholder(),
+      ),
     );
   }
 }

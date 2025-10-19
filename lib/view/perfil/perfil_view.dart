@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../app/utils/theme_provider.dart';
+import '../../core/utils/theme_provider.dart';
 import '../../widgets/dev_placeholder.dart';
+import '../../widgets/background_decoration.dart';
 
 class PerfilView extends StatefulWidget {
   const PerfilView({super.key});
@@ -58,7 +59,9 @@ class _PerfilViewState extends State<PerfilView> {
           ),
         ],
       ),
-      body: const DevPlaceholder(),
+      body: const BackgroundDecoration(
+        child: DevPlaceholder(),
+      ),
     );
   }
 }

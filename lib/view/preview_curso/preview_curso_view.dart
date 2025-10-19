@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/dev_placeholder.dart';
+import '../../widgets/background_decoration.dart';
 
 class PreviewCursoView extends StatefulWidget {
   const PreviewCursoView({super.key});
@@ -24,7 +25,9 @@ class _PreviewCursoViewState extends State<PreviewCursoView> {
           ),
         ),
       ),
-      body: const DevPlaceholder(),
+      body: const BackgroundDecoration(
+        child: DevPlaceholder(),
+      ),
     );
   }
 }

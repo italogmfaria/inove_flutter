@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/dev_placeholder.dart';
+import '../../widgets/background_decoration.dart';
 
 class RedefinirSenhaView extends StatefulWidget {
   const RedefinirSenhaView({super.key});
@@ -22,8 +23,11 @@ class _RedefinirSenhaViewState extends State<RedefinirSenhaView> {
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
-        ),      ),
-      body: const DevPlaceholder(),
+        ),
+      ),
+      body: const BackgroundDecoration(
+        child: DevPlaceholder(),
+      ),
     );
   }
 }

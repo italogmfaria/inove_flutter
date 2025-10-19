@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class IndexViewModel extends ChangeNotifier {
+  final AuthService _authService;
+
   bool _isLoading = true;
+
+  IndexViewModel(this._authService);
 
   bool get isLoading => _isLoading;
 
   Future<void> initialize(BuildContext context) async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 2));
 
     final isAuthenticated = await checkAuthentication();
 
@@ -21,8 +26,11 @@ class IndexViewModel extends ChangeNotifier {
   }
 
   Future<bool> checkAuthentication() async {
-    // TODO: Implementar verificação de autenticação real
-    await Future.delayed(const Duration(milliseconds: 500));
-    return false;
+    try {
+      return await _authService.isLoggedIn();
+    } catch (e) {
+      print('Erro ao verificar autenticação: ${e.toString()}');
+      return false;
+    }
   }
 }

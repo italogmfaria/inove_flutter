@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/dev_placeholder.dart';
+import '../../widgets/background_decoration.dart';
 
 class CadastroView extends StatefulWidget {
   const CadastroView({super.key});
@@ -24,7 +25,9 @@ class _CadastroViewState extends State<CadastroView> {
           ),
         ),
       ),
-      body: const DevPlaceholder(),
+      body: const BackgroundDecoration(
+        child: DevPlaceholder(),
+      ),
     );
   }
 }

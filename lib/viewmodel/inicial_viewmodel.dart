@@ -6,14 +6,15 @@ class InicialViewModel extends ChangeNotifier {
   int get currentPage => _currentPage;
 
   void setCurrentPage(int page) {
-    // TODO: Implementar lógica
+    _currentPage = page;
+    notifyListeners();
   }
 
   void navigateToLogin(BuildContext context) {
-    // TODO: Implementar navegação
+    Navigator.of(context).pushNamed('/login');
   }
 
   void navigateToRegister(BuildContext context) {
-    // TODO: Implementar navegação
+    Navigator.of(context).pushNamed('/cadastro');
   }
 }
