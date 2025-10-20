@@ -46,7 +46,6 @@ import '../../services/feedback_service.dart';
 import '../../services/password_recovery_service.dart';
 
 class AppPages {
-  // Inicializar services (singleton-like)
   static final ApiService _apiService = ApiService();
   static final AuthService _authService = AuthService(_apiService);
   static final UserService _userService = UserService(_apiService);

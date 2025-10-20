@@ -169,7 +169,7 @@ class _BackgroundDecorationState extends State<BackgroundDecoration>
             builder: (context, child) {
               return Positioned(
                 top: MediaQuery.of(context).size.height * 0.25,
-                right: MediaQuery.of(context).size.width * 0.05,
+                right: MediaQuery.of(context).size.width * -0.15,
                 child: Transform.translate(
                   offset: Offset(0, _animation3.value),
                   child: Transform.rotate(
@@ -204,7 +204,7 @@ class _BackgroundDecorationState extends State<BackgroundDecoration>
             builder: (context, child) {
               return Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.12,
-                left: MediaQuery.of(context).size.width * 0.05,
+                left: MediaQuery.of(context).size.width * -0.20,
                 child: Transform.translate(
                   offset: Offset(0, _animation4.value),
                   child: Transform.rotate(
@@ -218,7 +218,7 @@ class _BackgroundDecorationState extends State<BackgroundDecoration>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: isDark ? [
-                            AppColors.tertiaryColor.withAlpha(40),
+                            AppColors.accentColor.withAlpha(40),
                             AppColors.primaryButton.withAlpha(28),
                           ] : [
                             AppColors.primaryColor.withAlpha(15),

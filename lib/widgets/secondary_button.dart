@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 
-class PrimaryButton extends StatelessWidget {
+class SecondaryButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final bool isLoading;
   final double? width;
   final double height;
 
-  const PrimaryButton({
+  const SecondaryButton({
     super.key,
     required this.text,
     required this.onPressed,
@@ -22,16 +22,17 @@ class PrimaryButton extends StatelessWidget {
     return SizedBox(
       width: width ?? double.infinity,
       height: height,
-      child: ElevatedButton(
+      child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryButton,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primaryButton.withAlpha(150),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primaryButton,
+          side: const BorderSide(
+            color: AppColors.primaryButton,
+            width: 2,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          elevation: 0,
         ),
         child: isLoading
             ? const SizedBox(
@@ -39,7 +40,7 @@ class PrimaryButton extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryButton),
                 ),
               )
             : Text(

@@ -37,6 +37,9 @@ class CustomInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return TextFormField(
       controller: controller,
       validator: validator,
@@ -50,51 +53,59 @@ class CustomInput extends StatelessWidget {
       style: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        color: AppColors.textColor,
+        color: isDark ? Colors.white : AppColors.textColor,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: GoogleFonts.inter(
           fontSize: 14,
-          color: AppColors.inputColor,
+          color: isDark ? Colors.white.withAlpha(200) : AppColors.inputColor,
         ),
         hintStyle: GoogleFonts.inter(
           fontSize: 16,
-          color: AppColors.inputColor.withValues(alpha: 0.6),
+          color: isDark
+              ? Colors.white.withAlpha(130)
+              : AppColors.inputColor.withValues(alpha: 0.6),
         ),
         prefixIcon: prefixIcon != null
             ? Icon(
                 prefixIcon,
-                color: AppColors.inputColor,
+                color: isDark ? Colors.white.withAlpha(200) : AppColors.inputColor,
                 size: 24,
               )
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: isDark ? AppColors.primaryColor : Colors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: AppColors.inputColor,
+          borderSide: BorderSide(
+            color: isDark
+                ? Colors.white.withAlpha(80)
+                : AppColors.inputColor,
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: AppColors.borderColor,
+          borderSide: BorderSide(
+            color: isDark
+                ? Colors.white.withAlpha(80)
+                : AppColors.borderColor,
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: AppColors.inputColor,
+          borderSide: BorderSide(
+            color: isDark
+                ? AppColors.primaryButton
+                : AppColors.inputColor,
             width: 2,
           ),
         ),
