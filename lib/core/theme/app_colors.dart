@@ -23,4 +23,5 @@ class AppColors {
   // Status colors
   static const Color checkColor = Color(0xFF22C55E);
   static const Color errorColor = Color(0xFFC52222);
+  static const Color errorColorLight = Color(0xFFFF6B6B);
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/utils/theme_provider.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/dev_placeholder.dart';
 import '../../widgets/background_decoration.dart';
 
@@ -13,6 +14,61 @@ class MeusCursosView extends StatefulWidget {
 }
 
 class _MeusCursosViewState extends State<MeusCursosView> {
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Sair',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'Tem certeza que deseja sair?',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'Sair',
+              style: GoogleFonts.inter(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed ?? false) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.logout();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/inicial',
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,13 +105,7 @@ class _MeusCursosViewState extends State<MeusCursosView> {
               Icons.exit_to_app,
               color: Colors.white,
             ),
-            onPressed: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/inicial',
-                (route) => false,
-              );
-            },
+            onPressed: _handleLogout,
           ),
         ],
       ),

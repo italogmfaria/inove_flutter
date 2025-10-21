@@ -166,7 +166,7 @@ class _LoginViewState extends State<LoginView> {
                                   );
 
                                   if (success && context.mounted) {
-                                    Navigator.of(context).pushReplacementNamed('/index');
+                                    Navigator.of(context).pushReplacementNamed('/meus-cursos');
                                   }
                                 }
                               },

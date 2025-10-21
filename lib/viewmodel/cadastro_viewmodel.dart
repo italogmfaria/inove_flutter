@@ -25,7 +25,48 @@ class CadastroViewModel extends ChangeNotifier {
   List<SchoolModel> get schools => _schools;
   int? get selectedSchoolId => _selectedSchoolId;
 
-  Future<void> loadSchools() async {
+  String _getErrorMessage(dynamic error) {
+    final errorMessage = error.toString().toLowerCase();
+
+    if (errorMessage.contains('already exists') ||
+        errorMessage.contains('duplicate') ||
+        errorMessage.contains('409')) {
+      if (errorMessage.contains('email')) {
+        return 'Este e-mail já está cadastrado';
+      }
+      if (errorMessage.contains('cpf')) {
+        return 'Este CPF já está cadastrado';
+      }
+      return 'Usuário já cadastrado no sistema';
+    }
+
+    if (errorMessage.contains('timeout') ||
+        errorMessage.contains('connection failed')) {
+      return 'Erro de conexão. Verifique sua internet e tente novamente';
+    }
+
+    if (errorMessage.contains('invalid') ||
+        errorMessage.contains('validation')) {
+      if (errorMessage.contains('cpf')) {
+        return 'CPF inválido';
+      }
+      if (errorMessage.contains('email')) {
+        return 'E-mail inválido';
+      }
+      if (errorMessage.contains('password')) {
+        return 'A senha não atende aos requisitos mínimos';
+      }
+    }
+
+    if (errorMessage.contains('school') &&
+        errorMessage.contains('not found')) {
+      return 'Escola não encontrada. Por favor, selecione uma escola válida';
+    }
+
+    return 'Ocorreu um erro ao realizar o cadastro. Tente novamente mais tarde';
+  }
+
+  Future<void> loadSchools(BuildContext context) async {
     _isLoading = true;
     notifyListeners();
 
@@ -34,9 +75,10 @@ class CadastroViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Erro ao carregar escolas: ${e.toString()}';
+      _errorMessage = _getErrorMessage(e);
       _isLoading = false;
       notifyListeners();
+      Helpers.showError(context, _errorMessage!);
     }
   }
 
@@ -81,7 +123,7 @@ class CadastroViewModel extends ChangeNotifier {
     required String confirmPassword,
     required String cpf,
     required DateTime birthDate,
-    required int schoolId,
+    required SchoolModel school,
     required BuildContext context,
   }) async {
     // Validações
@@ -128,14 +170,14 @@ class CadastroViewModel extends ChangeNotifier {
         'password': password,
         'cpf': cpf,
         'birthDate': birthDate.toIso8601String(),
-        'schoolId': schoolId,
+        'school': school.toJson(),
       });
       _isLoading = false;
       notifyListeners();
       Helpers.showSuccess(context, 'Cadastro realizado com sucesso!');
       return true;
     } catch (e) {
-      _errorMessage = 'Erro ao registrar: ${e.toString()}';
+      _errorMessage = _getErrorMessage(e);
       _isLoading = false;
       notifyListeners();
       Helpers.showError(context, _errorMessage!);

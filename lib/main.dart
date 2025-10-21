@@ -4,11 +4,19 @@ import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
 import 'core/routes/app_pages.dart';
 import 'core/utils/theme_provider.dart';
+import 'services/auth_service.dart';
+import 'services/api_service.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        Provider(create: (_) => ApiService()),
+        ProxyProvider<ApiService, AuthService>(
+          update: (context, apiService, previous) => AuthService(apiService),
+        ),
+      ],
       child: const MyApp(),
     ),
   );

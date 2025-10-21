@@ -29,6 +29,24 @@ class LoginViewModel extends ChangeNotifier {
     return Validators.password(value);
   }
 
+  String _getErrorMessage(dynamic error) {
+    final errorMessage = error.toString().toLowerCase();
+
+    if (errorMessage.contains('invalid credentials') ||
+        errorMessage.contains('unauthorized') ||
+        errorMessage.contains('401')) {
+      return 'E-mail ou senha incorretos';
+    } else if (errorMessage.contains('timeout') ||
+        errorMessage.contains('connection failed')) {
+      return 'Erro de conexão. Verifique sua internet e tente novamente';
+    } else if (errorMessage.contains('not found') ||
+        errorMessage.contains('404')) {
+      return 'Usuário não encontrado';
+    }
+
+    return 'Ocorreu um erro ao fazer login. Tente novamente mais tarde';
+  }
+
   Future<bool> login(String email, String password, BuildContext context) async {
     // Validação antes de enviar
     final emailError = validateEmail(email);
@@ -59,7 +77,7 @@ class LoginViewModel extends ChangeNotifier {
       Helpers.showSuccess(context, 'Login realizado com sucesso!');
       return true;
     } catch (e) {
-      _errorMessage = 'Erro ao fazer login: ${e.toString()}';
+      _errorMessage = _getErrorMessage(e);
       _isLoading = false;
       notifyListeners();
       Helpers.showError(context, _errorMessage!);
