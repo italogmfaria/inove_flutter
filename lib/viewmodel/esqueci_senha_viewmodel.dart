@@ -8,50 +8,45 @@ class EsqueciSenhaViewModel extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
-  String? _successMessage;
 
   EsqueciSenhaViewModel(this._passwordRecoveryService);
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  String? get successMessage => _successMessage;
 
-  String? validateEmail(String? value) {
-    return Validators.email(value);
-  }
+  String? validateEmail(String? value) => Validators.email(value);
 
   Future<bool> sendRecoveryEmail(String email, BuildContext context) async {
-    final emailError = validateEmail(email);
-    if (emailError != null) {
-      _errorMessage = emailError;
-      notifyListeners();
-      Helpers.showError(context, emailError);
-      return false;
-    }
-
     _isLoading = true;
     _errorMessage = null;
-    _successMessage = null;
     notifyListeners();
 
     try {
       await _passwordRecoveryService.requestRecoveryCode(email);
-      _successMessage = 'Código de recuperação enviado para seu e-mail';
       _isLoading = false;
       notifyListeners();
-      Helpers.showSuccess(context, _successMessage!);
+      Helpers.showSuccess(context, 'Código enviado com sucesso para seu e-mail');
       return true;
     } catch (e) {
-      _errorMessage = 'Erro ao enviar e-mail: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
-      Helpers.showError(context, _errorMessage!);
+
+      String message;
+      if (e.toString().contains('not_found')) {
+        message = 'E-mail não cadastrado';
+      } else if (e.toString().contains('already_requested')) {
+        message = 'Aguarde alguns minutos antes de solicitar um novo código';
+      } else {
+        message = 'Não foi possível enviar o código. Tente novamente mais tarde';
+      }
+
+      Helpers.showError(context, message);
       return false;
     }
   }
 
   void navigateToVerifyCode(BuildContext context, String email) {
-    Navigator.of(context).pushNamed('/verificar-codigo', arguments: email);
+    Navigator.of(context).pushNamed('/verificar-codigo', arguments: {'email': email});
   }
 
   void navigateBack(BuildContext context) {

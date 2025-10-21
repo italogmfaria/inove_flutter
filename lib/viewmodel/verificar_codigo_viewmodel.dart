@@ -1,88 +1,94 @@
 import 'package:flutter/material.dart';
 import '../services/password_recovery_service.dart';
-import '../core/utils/validators.dart';
 import '../core/utils/helpers.dart';
-import '../core/utils/constants.dart';
+import '../core/utils/validators.dart';
 
 class VerificarCodigoViewModel extends ChangeNotifier {
   final PasswordRecoveryService _passwordRecoveryService;
-
   bool _isLoading = false;
-  String? _errorMessage;
-  String _code = '';
 
   VerificarCodigoViewModel(this._passwordRecoveryService);
 
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  String get code => _code;
 
-  void setCode(String value) {
-    _code = value;
-    notifyListeners();
-  }
-
-  String? validateCode(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Código é obrigatório';
-    }
-    if (value.length != Constants.codeLength) {
-      return 'O código deve ter ${Constants.codeLength} dígitos';
-    }
-    return null;
-  }
+  String? validateCode(String? value) => Validators.code(value);
+  String? validateEmail(String? value) => Validators.email(value);
 
   Future<bool> verifyCode(String email, String code, BuildContext context) async {
+    // Validação dos dados antes de chamar a API
+    final emailError = validateEmail(email);
+    if (emailError != null) {
+      Helpers.showError(context, emailError);
+      return false;
+    }
+
     final codeError = validateCode(code);
     if (codeError != null) {
-      _errorMessage = codeError;
-      notifyListeners();
       Helpers.showError(context, codeError);
       return false;
     }
 
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
     try {
+      _setLoading(true);
       await _passwordRecoveryService.verifyRecoveryCode(email, code);
-      _isLoading = false;
-      notifyListeners();
-      Helpers.showSuccess(context, 'Código verificado com sucesso!');
       return true;
     } catch (e) {
-      _errorMessage = 'Código inválido ou expirado: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-      Helpers.showError(context, _errorMessage!);
+      String message;
+      if (e.toString().contains('invalid_code')) {
+        message = 'Código inválido. Verifique e tente novamente';
+      } else if (e.toString().contains('code_expired')) {
+        message = 'Código expirado. Solicite um novo código';
+      } else if (e.toString().contains('too_many_attempts')) {
+        message = 'Muitas tentativas inválidas. Aguarde alguns minutos';
+      } else {
+        message = 'Erro ao verificar o código. Tente novamente mais tarde';
+      }
+
+      Helpers.showError(context, message);
       return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
-  Future<void> resendCode(String email, BuildContext context) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<bool> resendCode(String email, BuildContext context) async {
+    // Validação do email antes de reenviar
+    final emailError = validateEmail(email);
+    if (emailError != null) {
+      Helpers.showError(context, emailError);
+      return false;
+    }
 
     try {
+      _setLoading(true);
       await _passwordRecoveryService.requestRecoveryCode(email);
-      _isLoading = false;
-      notifyListeners();
-      Helpers.showSuccess(context, 'Código reenviado com sucesso!');
+      Helpers.showSuccess(context, 'Novo código enviado para seu e-mail');
+      return true;
     } catch (e) {
-      _errorMessage = 'Erro ao reenviar código: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-      Helpers.showError(context, _errorMessage!);
+      String message;
+      if (e.toString().contains('already_requested')) {
+        message = 'Aguarde alguns minutos antes de solicitar um novo código';
+      } else {
+        message = 'Não foi possível enviar um novo código. Tente novamente mais tarde';
+      }
+
+      Helpers.showError(context, message);
+      return false;
+    } finally {
+      _setLoading(false);
     }
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
   }
 
   void navigateToResetPassword(BuildContext context, String email, String code) {
-    Navigator.of(context).pushNamed('/redefinir-senha', arguments: {
-      'email': email,
-      'code': code,
-    });
+    Navigator.of(context).pushNamed(
+      '/redefinir-senha',
+      arguments: {'email': email, 'code': code},
+    );
   }
 
   void navigateBack(BuildContext context) {

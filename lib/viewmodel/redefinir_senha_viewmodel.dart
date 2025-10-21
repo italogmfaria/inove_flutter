@@ -5,16 +5,13 @@ import '../core/utils/helpers.dart';
 
 class RedefinirSenhaViewModel extends ChangeNotifier {
   final PasswordRecoveryService _passwordRecoveryService;
-
   bool _isLoading = false;
-  String? _errorMessage;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
   RedefinirSenhaViewModel(this._passwordRecoveryService);
 
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
   bool get obscurePassword => _obscurePassword;
   bool get obscureConfirmPassword => _obscureConfirmPassword;
 
@@ -29,59 +26,46 @@ class RedefinirSenhaViewModel extends ChangeNotifier {
   }
 
   String? validatePassword(String? value) {
-    final passwordError = Validators.password(value);
-    if (passwordError != null) return passwordError;
+    final basicValidation = Validators.password(value);
+    if (basicValidation != null) return basicValidation;
+
     return Validators.passwordStrength(value);
   }
 
-  String? validateConfirmPassword(String? password, String? confirmPassword) {
-    if (confirmPassword == null || confirmPassword.isEmpty) {
-      return 'Confirmação de senha é obrigatória';
-    }
+  String? validateConfirmPassword(String password, String? confirmPassword) =>
+    Validators.confirmPassword(confirmPassword, password);
+
+  Future<bool> resetPassword(String email, String code, String password, String confirmPassword, BuildContext context) async {
     if (password != confirmPassword) {
-      return 'As senhas não coincidem';
-    }
-    return null;
-  }
-
-  Future<bool> resetPassword(
-    String email,
-    String code,
-    String newPassword,
-    String confirmPassword,
-    BuildContext context,
-  ) async {
-    final passwordError = validatePassword(newPassword);
-    if (passwordError != null) {
-      _errorMessage = passwordError;
-      notifyListeners();
-      Helpers.showError(context, passwordError);
-      return false;
-    }
-
-    final confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword);
-    if (confirmPasswordError != null) {
-      _errorMessage = confirmPasswordError;
-      notifyListeners();
-      Helpers.showError(context, confirmPasswordError);
+      Helpers.showError(context, 'As senhas não coincidem');
       return false;
     }
 
     _isLoading = true;
-    _errorMessage = null;
     notifyListeners();
 
     try {
-      await _passwordRecoveryService.resetPassword(email, code, newPassword);
+      await _passwordRecoveryService.resetPassword(email, code, password);
       _isLoading = false;
       notifyListeners();
-      Helpers.showSuccess(context, 'Senha redefinida com sucesso!');
+      Helpers.showSuccess(context, 'Senha alterada com sucesso! Faça login com sua nova senha');
       return true;
     } catch (e) {
-      _errorMessage = 'Erro ao redefinir senha: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
-      Helpers.showError(context, _errorMessage!);
+
+      String message;
+      if (e.toString().contains('invalid_code')) {
+        message = 'Código inválido ou expirado. Solicite um novo código';
+      } else if (e.toString().contains('weak_password')) {
+        message = 'Escolha uma senha mais forte';
+      } else if (e.toString().contains('same_password')) {
+        message = 'A nova senha não pode ser igual à anterior';
+      } else {
+        message = 'Não foi possível alterar sua senha. Tente novamente mais tarde';
+      }
+
+      Helpers.showError(context, message);
       return false;
     }
   }
