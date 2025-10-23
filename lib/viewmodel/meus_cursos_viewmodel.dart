@@ -26,7 +26,7 @@ class MeusCursosViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Erro ao carregar seus cursos: ${e.toString()}';
+      _errorMessage = 'Erro ao carregar cursos: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
       if (context != null) {
@@ -35,15 +35,27 @@ class MeusCursosViewModel extends ChangeNotifier {
     }
   }
 
+  // TODO: Quando o backend estiver pronto, substitua este valor pelo progresso real do usuário
+  double getCourseProgress(CursoModel curso) {
+    // Valor padrão temporário: varia entre 20% e 75%
+    // Futuramente, este valor virá do backend
+    final progressMap = {
+      0: 0.75, // 75%
+      1: 0.40, // 40%
+      2: 0.20, // 20%
+    };
+
+    // Usa o ID do curso ou índice para variar o progresso
+    final index = curso.id != null ? curso.id! % 3 : 0;
+    return progressMap[index] ?? 0.30;
+  }
+
   void navigateToCursoPainel(BuildContext context, CursoModel curso) {
     Navigator.of(context).pushNamed('/painel-curso', arguments: curso);
   }
 
   void navigateToAllCursos(BuildContext context) {
-    Navigator.of(context).pushNamed('/cursos');
-  }
-
-  void navigateBack(BuildContext context) {
-    Navigator.of(context).pop();
+    Navigator.of(context).pushReplacementNamed('/cursos');
   }
 }
+

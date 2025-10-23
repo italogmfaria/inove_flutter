@@ -6,6 +6,7 @@ class UserModel {
   final String password;
   final DateTime? birthDate;
   final int? schoolId;
+  final String? role;
 
   UserModel({
     this.id,
@@ -15,6 +16,7 @@ class UserModel {
     required this.password,
     this.birthDate,
     this.schoolId,
+    this.role,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class UserModel {
           ? DateTime.parse(json['birthDate'])
           : null,
       schoolId: json['schoolId'],
+      role: json['role'] as String?,
     );
   }
 
@@ -40,6 +43,7 @@ class UserModel {
       'password': password,
       'birthDate': birthDate?.toIso8601String(),
       'schoolId': schoolId,
+      'role': role,
     };
   }
 
@@ -51,6 +55,7 @@ class UserModel {
     String? password,
     DateTime? birthDate,
     int? schoolId,
+    String? role,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -60,6 +65,13 @@ class UserModel {
       password: password ?? this.password,
       birthDate: birthDate ?? this.birthDate,
       schoolId: schoolId ?? this.schoolId,
+      role: role ?? this.role,
     );
+  }
+
+  bool isStudent() {
+    if (role == null) return false;
+    final upperRole = role!.toUpperCase();
+    return upperRole == 'STUDENT' || upperRole == 'DISCENTE';
   }
 }

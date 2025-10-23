@@ -34,6 +34,12 @@ dependencies:
   # HTTP package for API communication
   http: ^1.2.0
 
+  http_parser: ^4.0.3
+
+  path: ^1.9.0
+
+  image_picker: ^1.1.1
+
   # State management
   provider: ^6.1.1
 
@@ -48,6 +54,10 @@ dependencies:
 
   # For JSON serialization
   json_annotation: ^4.8.1
+
+  # Cached network images with better HTTPS support
+  cached_network_image: ^3.3.1
+
 
 dev_dependencies:
   flutter_test:

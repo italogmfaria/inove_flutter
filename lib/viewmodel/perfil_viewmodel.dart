@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/user_model.dart';
 import '../model/school_model.dart';
+import '../model/course_model.dart';
 import '../services/user_service.dart';
 import '../services/school_service.dart';
 import '../services/auth_service.dart';
@@ -14,7 +15,9 @@ class PerfilViewModel extends ChangeNotifier {
 
   UserModel? _user;
   SchoolModel? _school;
+  List<CursoModel> _myCourses = [];
   bool _isLoading = false;
+  bool _isLoadingCourses = false;
   String? _errorMessage;
   bool _isEditing = false;
 
@@ -22,7 +25,9 @@ class PerfilViewModel extends ChangeNotifier {
 
   UserModel? get user => _user;
   SchoolModel? get school => _school;
+  List<CursoModel> get myCourses => _myCourses;
   bool get isLoading => _isLoading;
+  bool get isLoadingCourses => _isLoadingCourses;
   String? get errorMessage => _errorMessage;
   bool get isEditing => _isEditing;
 
@@ -48,6 +53,9 @@ class PerfilViewModel extends ChangeNotifier {
         }
       }
 
+      // Carregar cursos do usuário
+      await loadMyCourses();
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -59,6 +67,38 @@ class PerfilViewModel extends ChangeNotifier {
       }
     }
   }
+
+  Future<void> loadMyCourses() async {
+    _isLoadingCourses = true;
+    notifyListeners();
+
+    try {
+      _myCourses = await _userService.getMyCourses();
+      _isLoadingCourses = false;
+      notifyListeners();
+    } catch (e) {
+      print('Erro ao carregar cursos: ${e.toString()}');
+      _myCourses = [];
+      _isLoadingCourses = false;
+      notifyListeners();
+    }
+  }
+
+  // TODO: Quando o backend estiver pronto, substitua este valor pelo progresso real do usuário
+  double getCourseProgress(CursoModel curso) {
+    // Valor padrão temporário: varia entre 20% e 75%
+    // Futuramente, este valor virá do backend
+    final progressMap = {
+      0: 0.75, // 75%
+      1: 0.40, // 40%
+      2: 0.20, // 20%
+    };
+
+    // Usa o ID do curso ou índice para variar o progresso
+    final index = curso.id != null ? curso.id! % 3 : 0;
+    return progressMap[index] ?? 0.30;
+  }
+
 
   String? validateName(String? value) {
     return Validators.required(value, fieldName: 'Nome');
