@@ -62,6 +62,24 @@ class ApiService {
     }
   }
 
+  // POST que aceita string diretamente no body (para feedbacks, etc)
+  Future<dynamic> postString(String endpoint, String body,
+      {bool needsAuth = false}) async {
+    final headers = await _getHeaders(needsAuth: needsAuth);
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: body,  // Envia a string diretamente, sem jsonEncode
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Erro na requisição POST: $e');
+    }
+  }
+
   Future<dynamic> put(String endpoint, Map<String, dynamic> body,
       {bool needsAuth = true}) async {
     final headers = await _getHeaders(needsAuth: needsAuth);

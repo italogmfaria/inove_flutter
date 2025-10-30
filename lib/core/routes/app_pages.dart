@@ -77,7 +77,7 @@ class AppPages {
       AppRoutes.previewCurso: (context) => GuardedRoute(
             guardType: RouteGuardType.public,
             child: ChangeNotifierProvider(
-              create: (_) => PreviewCursoViewModel(_cursoService, _feedbackService),
+              create: (_) => PreviewCursoViewModel(_cursoService, _feedbackService as UserService),
               child: const PreviewCursoView(),
             ),
           ),

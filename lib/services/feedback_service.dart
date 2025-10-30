@@ -24,10 +24,12 @@ class FeedbackService {
       throw Exception('Usuário não está logado.');
     }
 
-    final response = await _apiService.post(
+    // Usa postString para enviar apenas a string do comentário
+    final response = await _apiService.postString(
       '/feedbacks?userId=$userId&courseId=$courseId',
-      {'comment': comment},
+      comment,  // Envia apenas a string, não um objeto
     );
+
     return FeedbackModel.fromJson(response);
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../model/course_model.dart';
 import '../model/section_model.dart';
 import '../model/content_model.dart';
@@ -7,7 +8,6 @@ import '../services/section_service.dart';
 import '../services/content_service.dart';
 import '../services/feedback_service.dart';
 import '../core/utils/helpers.dart';
-import '../core/utils/validators.dart';
 
 class PainelCursoViewModel extends ChangeNotifier {
   final CursoService _cursoService;
@@ -57,7 +57,25 @@ class PainelCursoViewModel extends ChangeNotifier {
 
     try {
       _curso = await _cursoService.getCursoById(cursoId);
-      await loadSections(cursoId);
+
+      // Usar as seções que já vêm com o curso
+      if (_curso != null && _curso!.sections.isNotEmpty) {
+        _sections = _curso!.sections;
+
+        // Carregar conteúdos para cada seção
+        await _loadContentsForAllSections(cursoId);
+
+        _calculateProgress();
+
+        // Auto-selecionar primeiro conteúdo se disponível
+        if (_sections.isNotEmpty && _sections[0].contents.isNotEmpty) {
+          setCurrentContent(0, 0);
+        }
+      } else {
+        // Fallback: tentar carregar seções separadamente
+        await loadSections(cursoId);
+      }
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -70,13 +88,45 @@ class PainelCursoViewModel extends ChangeNotifier {
     }
   }
 
+  /// Carrega conteúdos para todas as seções
+  Future<void> _loadContentsForAllSections(int cursoId) async {
+    for (int i = 0; i < _sections.length; i++) {
+      final section = _sections[i];
+      if (section.id != null) {
+        try {
+          final contents = await _contentService.getContents(cursoId, section.id!);
+
+          // Atualizar a seção com os conteúdos carregados
+          _sections[i] = section.copyWith(contents: contents);
+        } catch (e) {
+          // Continuar com outras seções mesmo se uma falhar
+        }
+      }
+    }
+
+    // Atualizar o curso com as seções completas
+    if (_curso != null) {
+      _curso = _curso!.copyWith(sections: _sections);
+    }
+  }
+
   Future<void> loadSections(int cursoId) async {
     try {
       _sections = await _sectionService.getSections(cursoId);
+
+      // Carregar conteúdos para cada seção
+      await _loadContentsForAllSections(cursoId);
+
       _calculateProgress();
+
+      // Auto-select first content if available
+      if (_sections.isNotEmpty && _sections[0].contents.isNotEmpty) {
+        setCurrentContent(0, 0);
+      }
+
       notifyListeners();
     } catch (e) {
-      print('Erro ao carregar seções: ${e.toString()}');
+      // Silently fail
     }
   }
 
@@ -153,11 +203,15 @@ class PainelCursoViewModel extends ChangeNotifier {
   }
 
   String? validateFeedback(String? value) {
-    return Validators.minLength(value, 10, fieldName: 'Comentário');
+    // Aceita qualquer tamanho de comentário
+    if (value == null || value.trim().isEmpty) {
+      return 'O comentário não pode estar vazio';
+    }
+    return null;
   }
 
-  Future<bool> submitFeedback(BuildContext context) async {
-    final feedbackError = validateFeedback(_feedbackComment);
+  Future<bool> submitFeedback(BuildContext context, String comment) async {
+    final feedbackError = validateFeedback(comment);
 
     if (feedbackError != null) {
       _errorMessage = feedbackError;
@@ -178,9 +232,15 @@ class PainelCursoViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _feedbackService.addFeedback(_curso!.id!, _feedbackComment);
+      await _feedbackService.addFeedback(_curso!.id!, comment);
       _feedbackComment = '';
       _isSubmittingFeedback = false;
+
+      // Reload course to update feedbacks
+      if (_curso!.id != null) {
+        await loadCurso(_curso!.id!, context: context);
+      }
+
       notifyListeners();
       Helpers.showSuccess(context, 'Feedback enviado com sucesso!');
       return true;
@@ -195,5 +255,112 @@ class PainelCursoViewModel extends ChangeNotifier {
 
   void navigateBack(BuildContext context) {
     Navigator.of(context).pop();
+  }
+
+  // Obter userId do storage
+  Future<int?> _getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('userId');
+  }
+
+  // Verificar se o usuário já tem feedback neste curso
+  Future<bool> userHasFeedback() async {
+    if (_curso == null || _curso!.feedBacks.isEmpty) return false;
+    final userId = await _getUserId();
+    if (userId == null) return false;
+
+    return _curso!.feedBacks.any((feedback) => feedback.student?.id == userId);
+  }
+
+  // Obter feedback do usuário atual
+  Future<dynamic> getUserFeedback() async {
+    if (_curso == null) return null;
+    final userId = await _getUserId();
+    if (userId == null) return null;
+
+    try {
+      return _curso!.feedBacks.firstWhere(
+        (feedback) => feedback.student?.id == userId,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Editar feedback próprio
+  Future<bool> updateFeedback(BuildContext context, int feedbackId, String newComment) async {
+    final feedbackError = validateFeedback(newComment);
+
+    if (feedbackError != null) {
+      _errorMessage = feedbackError;
+      notifyListeners();
+      Helpers.showWarning(context, feedbackError);
+      return false;
+    }
+
+    _isSubmittingFeedback = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _feedbackService.updateMyFeedback(feedbackId, newComment);
+      _isSubmittingFeedback = false;
+
+      // Reload course to update feedbacks
+      if (_curso!.id != null) {
+        await loadCurso(_curso!.id!, context: context);
+      }
+
+      notifyListeners();
+      Helpers.showSuccess(context, 'Feedback atualizado com sucesso!');
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao atualizar feedback: ${e.toString()}';
+      _isSubmittingFeedback = false;
+      notifyListeners();
+      Helpers.showError(context, _errorMessage!);
+      return false;
+    }
+  }
+
+  // Deletar feedback próprio
+  Future<bool> deleteFeedback(BuildContext context, int feedbackId) async {
+    _isSubmittingFeedback = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _feedbackService.deleteMyFeedback(feedbackId);
+      _isSubmittingFeedback = false;
+
+      // Reload course to update feedbacks
+      if (_curso!.id != null) {
+        await loadCurso(_curso!.id!, context: context);
+      }
+
+      notifyListeners();
+      Helpers.showSuccess(context, 'Feedback removido com sucesso!');
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao remover feedback: ${e.toString()}';
+      _isSubmittingFeedback = false;
+      notifyListeners();
+      Helpers.showError(context, _errorMessage!);
+      return false;
+    }
+  }
+
+  // Ordenar feedbacks colocando o do usuário no topo
+  Future<List<dynamic>> getOrderedFeedbacks() async {
+    if (_curso == null || _curso!.feedBacks.isEmpty) return [];
+
+    final userId = await _getUserId();
+    if (userId == null) return _curso!.feedBacks;
+
+    final feedbacks = List.from(_curso!.feedBacks);
+    final userFeedback = feedbacks.where((f) => f.student?.id == userId).toList();
+    final otherFeedbacks = feedbacks.where((f) => f.student?.id != userId).toList();
+
+    return [...userFeedback, ...otherFeedbacks];
   }
 }

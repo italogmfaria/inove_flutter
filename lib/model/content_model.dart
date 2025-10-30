@@ -34,12 +34,54 @@ class ContentModel {
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
+    // Identificar o tipo de conteúdo
+    ContentType type;
+
+    if (json['contentType'] != null) {
+      // Tentar usar o contentType da API
+      type = ContentType.fromJson(json['contentType']);
+    } else {
+      // Fallback: identificar pelo nome do arquivo
+      final fileName = (json['fileName'] ?? '').toString().toLowerCase();
+      if (fileName.endsWith('.pdf')) {
+        type = ContentType.PDF;
+      } else if (fileName.endsWith('.mp4') ||
+                 fileName.endsWith('.avi') ||
+                 fileName.endsWith('.mov') ||
+                 fileName.endsWith('.wmv') ||
+                 fileName.endsWith('.webm')) {
+        type = ContentType.VIDEO;
+      } else {
+        // Verificar pela URL também
+        final fileUrl = (json['fileUrl'] ?? '').toString().toLowerCase();
+        if (fileUrl.contains('.pdf')) {
+          type = ContentType.PDF;
+        } else {
+          type = ContentType.VIDEO; // Default para VIDEO
+        }
+      }
+    }
+
+    // Processar fileUrl - adicionar prefixo do S3 se necessário
+    String fileUrlFinal = json['fileUrl'] ?? '';
+
+    // Se fileUrl está vazio, usa fileName como fallback
+    if (fileUrlFinal.isEmpty) {
+      fileUrlFinal = json['fileName'] ?? '';
+    }
+
+    if (fileUrlFinal.isNotEmpty && !fileUrlFinal.startsWith('http')) {
+      // Se não começa com http/https, adiciona o prefixo do S3 bucket
+      const s3BucketUrl = 'https://inove-bucket-streaming.s3.amazonaws.com/';
+      fileUrlFinal = s3BucketUrl + fileUrlFinal;
+    }
+
     return ContentModel(
       id: json['id'],
       description: json['description'] ?? '',
       title: json['title'] ?? '',
-      contentType: ContentType.fromJson(json['contentType'] ?? 'VIDEO'),
-      fileUrl: json['fileUrl'] ?? '',
+      contentType: type,
+      fileUrl: fileUrlFinal,
       fileName: json['fileName'] ?? '',
       sectionId: json['sectionId'] ?? 0,
     );
@@ -77,4 +119,3 @@ class ContentModel {
     );
   }
 }
-
