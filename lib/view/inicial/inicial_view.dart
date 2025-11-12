@@ -203,7 +203,7 @@ class InicialViewContent extends StatelessWidget {
                           },
                         ),
 
-                        SizedBox(height: screenHeight * 0),
+                        SizedBox(height: screenHeight * 0.05),
                       ],
                     ),
                   ),

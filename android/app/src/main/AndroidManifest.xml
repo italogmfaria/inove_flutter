@@ -4,7 +4,7 @@
 
     <application
         android:usesCleartextTraffic="true"
-        android:label="inove_flutter"
+        android:label="Inove"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
