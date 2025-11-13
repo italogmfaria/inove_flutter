@@ -46,13 +46,24 @@ class PreviewCursoViewModel extends ChangeNotifier {
       _isEnrolled = meusCursos.any((curso) => curso.id == cursoId);
       notifyListeners();
     } catch (e) {
-      print('Erro ao verificar matrícula: $e');
+      print('Erro ao verificar inscrição: $e');
       _isEnrolled = false;
     }
   }
 
   Future<void> enrollInCourse(BuildContext context) async {
     if (_curso?.id == null) return;
+
+    // Verificar se o usuário está logado
+    final isLoggedIn = await _checkIfUserIsLoggedIn();
+    if (!isLoggedIn) {
+      if (context.mounted) {
+        Navigator.of(context).pushReplacementNamed('/login', arguments: {
+          'message': 'Você precisa estar logado para se inscrever em um curso',
+        });
+      }
+      return;
+    }
 
     _isEnrolling = true;
     _errorMessage = null;
@@ -67,10 +78,18 @@ class PreviewCursoViewModel extends ChangeNotifier {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Matrícula realizada com sucesso!'),
+            content: Text('Inscrição realizada com sucesso!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
+
+        // Navegar para o painel do curso após inscrição
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (context.mounted) {
+            navigateToCursoPainel(context);
+          }
+        });
       }
     } catch (e) {
       _isEnrolling = false;
@@ -86,6 +105,16 @@ class PreviewCursoViewModel extends ChangeNotifier {
           ),
         );
       }
+    }
+  }
+
+  Future<bool> _checkIfUserIsLoggedIn() async {
+    try {
+      await _userService.getMyCourses();
+      return true; // Se conseguir obter os cursos, está logado
+    } catch (e) {
+      // Se der erro (userId null ou outro erro de autenticação), não está logado
+      return false;
     }
   }
 
@@ -116,13 +145,13 @@ class PreviewCursoViewModel extends ChangeNotifier {
     final errorMessage = error.toString().toLowerCase();
 
     if (errorMessage.contains('already enrolled') ||
-        errorMessage.contains('já matriculado')) {
-      return 'Você já está matriculado neste curso';
+        errorMessage.contains('já inscrito')) {
+      return 'Você já está inscrito neste curso';
     }
 
     if (errorMessage.contains('unauthorized') ||
         errorMessage.contains('401')) {
-      return 'Você precisa estar logado para se matricular';
+      return 'Você precisa estar logado para se inscrever';
     }
 
     if (errorMessage.contains('timeout') ||
@@ -130,7 +159,7 @@ class PreviewCursoViewModel extends ChangeNotifier {
       return 'Erro de conexão. Verifique sua internet e tente novamente';
     }
 
-    return 'Erro ao realizar matrícula. Tente novamente';
+    return 'Erro ao realizar inscrição. Tente novamente';
   }
 }
 

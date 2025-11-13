@@ -24,10 +24,11 @@ class MeusCursosViewModel extends ChangeNotifier {
     try {
       _meusCursos = await _userService.getMyCourses();
       _isLoading = false;
+      _errorMessage = null; // Limpa qualquer erro anterior
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Erro ao carregar cursos: ${e.toString()}';
       _isLoading = false;
+      _errorMessage = 'Erro ao carregar cursos: ${e.toString()}';
       notifyListeners();
       if (context != null) {
         Helpers.showError(context, _errorMessage!);

@@ -4,14 +4,18 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/formatters.dart';
 import '../core/utils/validators.dart';
+import '../model/school_model.dart';
 import 'primary_button.dart';
 import 'secondary_button.dart';
 import 'custom_input.dart';
+import 'custom_dropdown.dart';
 
 class EditProfileModal extends StatefulWidget {
   final String initialName;
   final String initialEmail;
   final String initialCpf;
+  final SchoolModel? initialSchool;
+  final List<SchoolModel> schools;
   final Function(Map<String, dynamic>) onSave;
   final bool isDark;
 
@@ -20,6 +24,8 @@ class EditProfileModal extends StatefulWidget {
     required this.initialName,
     required this.initialEmail,
     required this.initialCpf,
+    this.initialSchool,
+    required this.schools,
     required this.onSave,
     required this.isDark,
   });
@@ -33,6 +39,7 @@ class _EditProfileModalState extends State<EditProfileModal> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _cpfController;
+  SchoolModel? _selectedSchool;
   bool _isLoading = false;
 
   @override
@@ -41,6 +48,20 @@ class _EditProfileModalState extends State<EditProfileModal> {
     _nameController = TextEditingController(text: widget.initialName);
     _emailController = TextEditingController(text: widget.initialEmail);
     _cpfController = TextEditingController(text: Formatters.formatCpf(widget.initialCpf));
+
+    // Buscar a escola na lista pelo ID para garantir que é a mesma instância
+    if (widget.initialSchool != null && widget.initialSchool!.id != null && widget.schools.isNotEmpty) {
+      try {
+        _selectedSchool = widget.schools.firstWhere(
+          (school) => school.id == widget.initialSchool!.id,
+        );
+      } catch (e) {
+        // Se não encontrar na lista, deixa null
+        _selectedSchool = null;
+      }
+    } else {
+      _selectedSchool = null;
+    }
   }
 
   @override
@@ -78,6 +99,18 @@ class _EditProfileModalState extends State<EditProfileModal> {
       final cleanedCpf = Formatters.cleanCpf(_cpfController.text);
       if (cleanedCpf != widget.initialCpf) {
         data['cpf'] = cleanedCpf;
+      }
+
+      // Verificar se a escola foi alterada
+      if (_selectedSchool?.id != widget.initialSchool?.id) {
+        if (_selectedSchool != null && _selectedSchool!.id != null) {
+          // Enviar escola como objeto com id, igual ao Angular
+          data['school'] = {
+            'id': _selectedSchool!.id
+          };
+        } else {
+          data['school'] = null;
+        }
       }
 
       if (data.isEmpty) {
@@ -180,6 +213,33 @@ class _EditProfileModalState extends State<EditProfileModal> {
                     inputFormatters: [Formatters.cpf()],
                     enabled: !_isLoading,
                     validator: Validators.cpf,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Escola dropdown
+                  CustomDropdown<SchoolModel>(
+                    value: _selectedSchool,
+                    label: 'Escola',
+                    hint: 'Selecione sua escola',
+                    prefixIcon: Icons.school_outlined,
+                    enabled: !_isLoading,
+                    items: widget.schools.map((school) => DropdownMenuItem(
+                      value: school,
+                      child: Text(
+                        school.name,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: widget.isDark
+                              ? Colors.white
+                              : AppColors.textColor,
+                        ),
+                      ),
+                    )).toList(),
+                    onChanged: _isLoading ? null : (school) {
+                      setState(() => _selectedSchool = school);
+                    },
+                    validator: (value) => Validators.required(value?.name, fieldName: 'Escola'),
                   ),
                 ],
               ),

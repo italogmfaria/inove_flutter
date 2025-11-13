@@ -105,6 +105,60 @@ class _PerfilViewState extends State<PerfilView> {
     }
   }
 
+  Future<void> _showUnenrollDialog(BuildContext context, CursoModel curso, PerfilViewModel viewModel, bool isDark) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
+        title: Text(
+          'Remover inscrição',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : AppColors.textColor,
+          ),
+        ),
+        content: Text(
+          'Deseja remover sua inscrição do curso "${curso.name}"?\n\nVocê perderá todo o progresso realizado.',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            color: isDark ? Colors.white.withAlpha(200) : AppColors.textColor,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : AppColors.primaryColor,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'Remover',
+              style: GoogleFonts.inter(
+                color: isDark ? AppColors.errorColorLight : AppColors.errorColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed ?? false) {
+      if (curso.id != null) {
+        await viewModel.unenrollFromCourse(curso.id!, context);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -135,8 +189,8 @@ class _PerfilViewState extends State<PerfilView> {
                         : Icons.dark_mode_outlined,
                     color: Colors.white,
                   ),
-                  onPressed: () {
-                    themeProvider.toggleTheme();
+                  onPressed: () async {
+                    await themeProvider.toggleTheme();
                   },
                 );
               },
@@ -260,7 +314,7 @@ class _PerfilViewState extends State<PerfilView> {
                             ],
                           ),
                           if (user.cpf.isNotEmpty) ...[
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             Row(
                               children: [
                                 Text(
@@ -280,6 +334,35 @@ class _PerfilViewState extends State<PerfilView> {
                                     color: isDark
                                         ? Colors.white.withAlpha(180)
                                         : AppColors.inputColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (viewModel.school != null) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Text(
+                                  'Escola: ',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark
+                                        ? Colors.white.withAlpha(180)
+                                        : AppColors.inputColor,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    viewModel.school!.name,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: isDark
+                                          ? Colors.white.withAlpha(180)
+                                          : AppColors.inputColor,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -360,6 +443,8 @@ class _PerfilViewState extends State<PerfilView> {
                             initialName: user.name,
                             initialEmail: user.email,
                             initialCpf: user.cpf,
+                            initialSchool: viewModel.school,
+                            schools: viewModel.schools,
                             isDark: isDark,
                             onSave: (data) async {
                               await viewModel.updateProfile(data, context);
@@ -426,7 +511,7 @@ class _PerfilViewState extends State<PerfilView> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Course Icon/Image
                 FutureBuilder<String?>(
@@ -551,6 +636,30 @@ class _PerfilViewState extends State<PerfilView> {
                         ],
                       ),
                     ],
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Botão de remover inscrição
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.errorColorLight : AppColors.errorColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    onPressed: () => _showUnenrollDialog(context, curso, viewModel, isDark),
+                    padding: const EdgeInsets.all(10),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    tooltip: 'Remover inscrição do curso',
                   ),
                 ),
               ],

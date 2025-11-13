@@ -17,6 +17,37 @@ class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _message;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Capturar mensagem passada como argumento
+    if (_message == null) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, dynamic> && args.containsKey('message')) {
+        _message = args['message'] as String?;
+
+        // Mostrar a mensagem em um SnackBar após a construção do widget
+        if (_message != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_message!),
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.orange.shade700
+                      : Colors.orange,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          });
+        }
+      }
+    }
+  }
 
   @override
   void dispose() {

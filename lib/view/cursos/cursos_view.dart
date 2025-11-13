@@ -145,8 +145,8 @@ class _CursosViewState extends State<CursosView> {
                         : Icons.dark_mode_outlined,
                     color: Colors.white,
                   ),
-                  onPressed: () {
-                    themeProvider.toggleTheme();
+                  onPressed: () async {
+                    await themeProvider.toggleTheme();
                   },
                 );
               },

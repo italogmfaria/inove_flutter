@@ -7,7 +7,6 @@ import 'core/utils/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 
-// GlobalKey para preservar o estado de navegação
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
@@ -28,11 +27,14 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  static final _appKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
+          key: _appKey,
           navigatorKey: navigatorKey,
           title: 'Inove',
           theme: AppTheme.lightTheme,

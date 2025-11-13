@@ -158,8 +158,8 @@ class _MeusCursosViewState extends State<MeusCursosView> {
                         : Icons.dark_mode_outlined,
                     color: Colors.white,
                   ),
-                  onPressed: () {
-                    themeProvider.toggleTheme();
+                  onPressed: () async {
+                    await themeProvider.toggleTheme();
                   },
                 );
               },
@@ -328,7 +328,7 @@ class _MeusCursosViewState extends State<MeusCursosView> {
                               const SizedBox(height: 16),
                               Text(
                                 _searchController.text.isEmpty
-                                    ? 'Você ainda não está matriculado em nenhum curso'
+                                    ? 'Você ainda não está inscrito em nenhum curso'
                                     : 'Nenhum curso encontrado',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.inter(

@@ -16,6 +16,7 @@ class PerfilViewModel extends ChangeNotifier {
   UserModel? _user;
   SchoolModel? _school;
   List<CursoModel> _myCourses = [];
+  List<SchoolModel> _schools = [];
   bool _isLoading = false;
   bool _isLoadingCourses = false;
   String? _errorMessage;
@@ -26,6 +27,7 @@ class PerfilViewModel extends ChangeNotifier {
   UserModel? get user => _user;
   SchoolModel? get school => _school;
   List<CursoModel> get myCourses => _myCourses;
+  List<SchoolModel> get schools => _schools;
   bool get isLoading => _isLoading;
   bool get isLoadingCourses => _isLoadingCourses;
   String? get errorMessage => _errorMessage;
@@ -44,14 +46,15 @@ class PerfilViewModel extends ChangeNotifier {
     try {
       _user = await _userService.getMyProfile();
 
-      // Carregar dados da escola se o usuário tiver uma
-      if (_user?.schoolId != null) {
-        try {
-          _school = await _schoolService.getMySchool();
-        } catch (e) {
-          print('Erro ao carregar escola: ${e.toString()}');
-        }
+      // Sempre tentar carregar a escola via UserService (endpoint /usuarios/{id}/school)
+      try {
+        _school = await _userService.getMySchool();
+      } catch (e) {
+        _school = null;
       }
+
+      // Carregar lista de escolas para edição
+      await loadSchools();
 
       // Carregar cursos do usuário
       await loadMyCourses();
@@ -68,6 +71,15 @@ class PerfilViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> loadSchools() async {
+    try {
+      _schools = await _schoolService.getSchools();
+      notifyListeners();
+    } catch (e) {
+      _schools = [];
+    }
+  }
+
   Future<void> loadMyCourses() async {
     _isLoadingCourses = true;
     notifyListeners();
@@ -77,7 +89,6 @@ class PerfilViewModel extends ChangeNotifier {
       _isLoadingCourses = false;
       notifyListeners();
     } catch (e) {
-      print('Erro ao carregar cursos: ${e.toString()}');
       _myCourses = [];
       _isLoadingCourses = false;
       notifyListeners();
@@ -162,6 +173,20 @@ class PerfilViewModel extends ChangeNotifier {
       _errorMessage = 'Erro ao fazer logout: ${e.toString()}';
       notifyListeners();
       Helpers.showError(context, _errorMessage!);
+    }
+  }
+
+  Future<bool> unenrollFromCourse(int courseId, BuildContext context) async {
+    try {
+      await _userService.unenrollFromCourse(courseId);
+      await loadMyCourses(); // Recarregar lista de cursos
+      Helpers.showSuccess(context, 'Inscrição removida com sucesso!');
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao remover inscrição do curso: ${e.toString()}';
+      notifyListeners();
+      Helpers.showError(context, _errorMessage!);
+      return false;
     }
   }
 

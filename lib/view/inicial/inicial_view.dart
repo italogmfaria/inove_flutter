@@ -226,8 +226,8 @@ class InicialViewContent extends StatelessWidget {
                           : Icons.dark_mode_outlined,
                       color: Colors.white,
                     ),
-                    onPressed: () {
-                      themeProvider.toggleTheme();
+                    onPressed: () async {
+                      await themeProvider.toggleTheme();
                     },
                   );
                 },

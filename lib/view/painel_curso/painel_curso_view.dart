@@ -14,7 +14,7 @@ import '../../services/section_service.dart';
 import '../../services/content_service.dart';
 import '../../services/feedback_service.dart';
 import '../../model/course_model.dart';
-import '../../model/content_model.dart';  // Para acessar ContentType enum
+import '../../model/content_model.dart';
 
 class PainelCursoView extends StatefulWidget {
   const PainelCursoView({super.key});
@@ -53,7 +53,6 @@ class _PainelCursoViewState extends State<PainelCursoView> {
           contentService,
           feedbackService,
         );
-        // Não usar setCurso aqui, deixar loadCurso carregar tudo completo
         _viewModel.loadCurso(_curso!.id!, context: context);
       }
       _initialized = true;
@@ -145,8 +144,8 @@ class _PainelCursoViewState extends State<PainelCursoView> {
                         : Icons.dark_mode_outlined,
                     color: Colors.white,
                   ),
-                  onPressed: () {
-                    themeProvider.toggleTheme();
+                  onPressed: () async {
+                    await themeProvider.toggleTheme();
                   },
                 );
               },

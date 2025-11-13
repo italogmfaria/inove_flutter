@@ -119,8 +119,8 @@ class _PreviewCursoViewState extends State<PreviewCursoView> {
                         : Icons.dark_mode_outlined,
                     color: Colors.white,
                   ),
-                  onPressed: () {
-                    themeProvider.toggleTheme();
+                  onPressed: () async {
+                    await themeProvider.toggleTheme();
                   },
                 );
               },
@@ -471,7 +471,7 @@ class _PreviewCursoViewState extends State<PreviewCursoView> {
                 const Icon(Icons.check_circle, color: Colors.green, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Você já está matriculado',
+                  'Você já está inscrito',
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
