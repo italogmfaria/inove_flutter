@@ -412,7 +412,7 @@ class _PerfilViewState extends State<PerfilView> {
                         ),
                         child: Center(
                           child: Text(
-                            'Você ainda não está matriculado em nenhum curso',
+                            'Você ainda não está inscrito em nenhum curso',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 14,

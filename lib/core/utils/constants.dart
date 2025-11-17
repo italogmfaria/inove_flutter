@@ -1,6 +1,6 @@
 class Constants {
   // Environment Configuration
-  static const bool isProduction = false;
+  static const bool isProduction = true;
 
   // API Configuration
   static const String devBaseUrl = 'http://localhost:8080/api/inove';

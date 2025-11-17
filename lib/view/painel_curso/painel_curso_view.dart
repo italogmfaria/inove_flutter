@@ -27,6 +27,8 @@ class _PainelCursoViewState extends State<PainelCursoView> {
   late PainelCursoViewModel _viewModel;
   CursoModel? _curso;
   bool _initialized = false;
+  final ScrollController _scrollController = ScrollController();
+  bool _isInteractingWithPdf = false;
 
   Future<int?> _getUserId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -71,6 +73,12 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     } catch (e) {
       return dateString;
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -169,6 +177,10 @@ class _PainelCursoViewState extends State<PainelCursoView> {
               final curso = viewModel.curso ?? _curso!;
 
               return SingleChildScrollView(
+                controller: _scrollController,
+                physics: _isInteractingWithPdf
+                    ? const NeverScrollableScrollPhysics()
+                    : const AlwaysScrollableScrollPhysics(),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -293,6 +305,10 @@ class _PainelCursoViewState extends State<PainelCursoView> {
         final currentContent = viewModel.currentContent;
         final hasContent = currentContent != null;
 
+        // Altura dinâmica: 500 para PDF, 280 para vídeo
+        final contentHeight = hasContent && currentContent.contentType == ContentType.PDF
+            ? 640.0
+            : 250.0;
 
         return Column(
           children: [
@@ -300,7 +316,7 @@ class _PainelCursoViewState extends State<PainelCursoView> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark ? AppColors.primaryColor : Colors.white,
+                color: isDark ? AppColors.tertiaryColor : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -313,16 +329,36 @@ class _PainelCursoViewState extends State<PainelCursoView> {
               child: Column(
                 children: [
                   // Área do vídeo/conteúdo
-                  Container(
-                    height: 280,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.backgroundColor.withAlpha(50)
-                          : AppColors.backgroundColor,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                  Listener(
+                    onPointerDown: (details) {
+                      // Detectar quando usuário toca no container
+                      if (hasContent && currentContent.contentType == ContentType.PDF) {
+                        setState(() {
+                          _isInteractingWithPdf = true;
+                        });
+                      }
+                    },
+                    onPointerUp: (details) {
+                      // Re-habilitar scroll quando soltar o toque
+                      setState(() {
+                        _isInteractingWithPdf = false;
+                      });
+                    },
+                    onPointerCancel: (details) {
+                      // Re-habilitar scroll se o toque for cancelado
+                      setState(() {
+                        _isInteractingWithPdf = false;
+                      });
+                    },
+                    child: Container(
+                      height: contentHeight,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.backgroundColor.withAlpha(50)
+                            : AppColors.backgroundColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.hardEdge,
                       child: hasContent
                           ? _buildContentPlayer(currentContent, isDark)
                           : _buildEmptyState(isDark),
@@ -433,9 +469,13 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     }
 
     if (content.contentType == ContentType.VIDEO) {
-      return VideoPlayerWidget(videoUrl: content.fileUrl);
+      return VideoPlayerWidget(
+        key: ValueKey('video_${content.id}_${content.fileUrl}'),
+        videoUrl: content.fileUrl,
+      );
     } else if (content.contentType == ContentType.PDF) {
       return PdfViewerWidget(
+        key: ValueKey('pdf_${content.id}_${content.fileUrl}'),
         pdfUrl: content.fileUrl,
         fileName: content.fileName,
       );

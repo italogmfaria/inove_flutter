@@ -46,7 +46,9 @@ class PainelCursoViewModel extends ChangeNotifier {
 
   void setCurso(CursoModel curso) {
     _curso = curso;
-    _sections = curso.sections;
+    // Ordenar seções por ID
+    _sections = List.from(curso.sections)
+      ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
     notifyListeners();
   }
 
@@ -60,7 +62,9 @@ class PainelCursoViewModel extends ChangeNotifier {
 
       // Usar as seções que já vêm com o curso
       if (_curso != null && _curso!.sections.isNotEmpty) {
-        _sections = _curso!.sections;
+        // Ordenar seções por ID
+        _sections = List.from(_curso!.sections)
+          ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
 
         // Carregar conteúdos para cada seção
         await _loadContentsForAllSections(cursoId);
@@ -96,8 +100,12 @@ class PainelCursoViewModel extends ChangeNotifier {
         try {
           final contents = await _contentService.getContents(cursoId, section.id!);
 
-          // Atualizar a seção com os conteúdos carregados
-          _sections[i] = section.copyWith(contents: contents);
+          // Ordenar conteúdos por ID
+          final sortedContents = List<ContentModel>.from(contents)
+            ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+
+          // Atualizar a seção com os conteúdos carregados e ordenados
+          _sections[i] = section.copyWith(contents: sortedContents);
         } catch (e) {
           // Continuar com outras seções mesmo se uma falhar
         }
@@ -112,7 +120,11 @@ class PainelCursoViewModel extends ChangeNotifier {
 
   Future<void> loadSections(int cursoId) async {
     try {
-      _sections = await _sectionService.getSections(cursoId);
+      final sections = await _sectionService.getSections(cursoId);
+
+      // Ordenar seções por ID
+      _sections = List.from(sections)
+        ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
 
       // Carregar conteúdos para cada seção
       await _loadContentsForAllSections(cursoId);
