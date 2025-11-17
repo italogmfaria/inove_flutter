@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inove_flutter/services/user_progress_service.dart';
 import 'package:provider/provider.dart';
 import 'app_routes.dart';
 import '../guards/auth_guard.dart';
@@ -55,6 +56,7 @@ class AppPages {
   static final ContentService _contentService = ContentService(_apiService);
   static final FeedbackService _feedbackService = FeedbackService(_apiService);
   static final PasswordRecoveryService _passwordRecoveryService = PasswordRecoveryService(_apiService);
+  static final UserProgressService _userProgressService = UserProgressService(_apiService);
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -140,14 +142,14 @@ class AppPages {
       AppRoutes.meusCursos: (context) => GuardedRoute(
             guardType: RouteGuardType.onlyAuth,
             child: ChangeNotifierProvider(
-              create: (_) => MeusCursosViewModel(_userService),
+              create: (_) => MeusCursosViewModel(_userService, _userProgressService),
               child: const MeusCursosView(),
             ),
           ),
       AppRoutes.perfil: (context) => GuardedRoute(
             guardType: RouteGuardType.onlyAuth,
             child: ChangeNotifierProvider(
-              create: (_) => PerfilViewModel(_userService, _schoolService, _authService),
+              create: (_) => PerfilViewModel(_userService, _schoolService, _authService, _userProgressService),
               child: const PerfilView(),
             ),
           ),
@@ -159,6 +161,7 @@ class AppPages {
                 _sectionService,
                 _contentService,
                 _feedbackService,
+                _userProgressService,
               ),
               child: const PainelCursoView(),
             ),

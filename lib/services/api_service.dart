@@ -65,7 +65,11 @@ class ApiService {
   // POST que aceita string diretamente no body (para feedbacks, etc)
   Future<dynamic> postString(String endpoint, String body,
       {bool needsAuth = false}) async {
-    final headers = await _getHeaders(needsAuth: needsAuth);
+    final token = needsAuth ? await getToken() : null;
+    final headers = {
+      'Content-Type': 'text/plain; charset=utf-8',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
     final url = Uri.parse('$baseUrl$endpoint');
 
     try {
@@ -90,6 +94,28 @@ class ApiService {
         url,
         headers: headers,
         body: jsonEncode(body),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Erro na requisição PUT: $e');
+    }
+  }
+
+  // PUT que aceita string diretamente no body (para feedbacks, etc)
+  Future<dynamic> putString(String endpoint, String body,
+      {bool needsAuth = true}) async {
+    final token = needsAuth ? await getToken() : null;
+    final headers = {
+      'Content-Type': 'text/plain; charset=utf-8',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final url = Uri.parse('$baseUrl$endpoint');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: body,  // Envia a string diretamente, sem jsonEncode
       );
       return _handleResponse(response);
     } catch (e) {

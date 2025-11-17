@@ -20,7 +20,7 @@ class IndexViewModel extends ChangeNotifier {
 
     if (context.mounted) {
       Navigator.of(context).pushReplacementNamed(
-        isAuthenticated ? '/cursos' : '/inicial',
+        isAuthenticated ? '/meus-cursos' : '/inicial',
       );
     }
   }

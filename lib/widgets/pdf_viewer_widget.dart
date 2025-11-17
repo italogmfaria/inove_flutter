@@ -11,11 +11,13 @@ import 'package:path_provider/path_provider.dart';
 class PdfViewerWidget extends StatefulWidget {
   final String pdfUrl;
   final String fileName;
+  final VoidCallback? onPdfCompleted;
 
   const PdfViewerWidget({
     super.key,
     required this.pdfUrl,
     required this.fileName,
+    this.onPdfCompleted,
   });
 
   @override
@@ -29,6 +31,7 @@ class _PdfViewerWidgetState extends State<PdfViewerWidget> {
   String? _errorMessage;
   int _totalPages = 0;
   int _currentPage = 0;
+  bool _hasReachedLastPage = false;
 
   @override
   void initState() {
@@ -49,6 +52,7 @@ class _PdfViewerWidgetState extends State<PdfViewerWidget> {
         _errorMessage = null;
         _totalPages = 0;
         _currentPage = 0;
+        _hasReachedLastPage = false;
       });
       _downloadAndLoadPdf();
     }
@@ -283,6 +287,13 @@ class _PdfViewerWidgetState extends State<PdfViewerWidget> {
             setState(() {
               _currentPage = page ?? 0;
             });
+
+            // Verificar se chegou na última página
+            if (page != null && total != null && page + 1 >= total && !_hasReachedLastPage) {
+              _hasReachedLastPage = true;
+              widget.onPdfCompleted?.call();
+              print('[PDF] Usuário chegou na última página: ${page + 1} de $total');
+            }
           },
         ),
         // Indicador de página
@@ -357,6 +368,13 @@ class _PdfViewerWidgetState extends State<PdfViewerWidget> {
             setState(() {
               _currentPage = page ?? 0;
             });
+
+            // Verificar se chegou na última página
+            if (page != null && total != null && page + 1 >= total && !_hasReachedLastPage) {
+              _hasReachedLastPage = true;
+              widget.onPdfCompleted?.call();
+              print('[PDF] Usuário chegou na última página: ${page + 1} de $total');
+            }
           },
         ),
         // Indicador de página

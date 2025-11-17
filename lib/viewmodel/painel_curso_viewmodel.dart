@@ -7,13 +7,16 @@ import '../services/course_service.dart';
 import '../services/section_service.dart';
 import '../services/content_service.dart';
 import '../services/feedback_service.dart';
+import '../services/user_progress_service.dart';
 import '../core/utils/helpers.dart';
+import 'package:inove_flutter/core/utils/profanity_list.dart';
 
 class PainelCursoViewModel extends ChangeNotifier {
   final CursoService _cursoService;
   final SectionService _sectionService;
   final ContentService _contentService;
   final FeedbackService _feedbackService;
+  final UserProgressService _userProgressService;
 
   CursoModel? _curso;
   List<SectionModel> _sections = [];
@@ -25,13 +28,22 @@ class PainelCursoViewModel extends ChangeNotifier {
   String? _errorMessage;
   String _feedbackComment = '';
   bool _isSubmittingFeedback = false;
+  Set<int> _completedContentIds = {};
+  double _courseProgress = 0.0;
+  bool _hasMarkedCurrentContentComplete = false;
+  int _totalContents = 0;
+  late Set<String> _profanityList;
 
   PainelCursoViewModel(
     this._cursoService,
     this._sectionService,
     this._contentService,
     this._feedbackService,
-  );
+    this._userProgressService,
+  ) {
+    // Inicializar lista de profanidades
+    _profanityList = ProfanityList.getProfanityWords();
+  }
 
   CursoModel? get curso => _curso;
   List<SectionModel> get sections => _sections;
@@ -43,6 +55,13 @@ class PainelCursoViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get feedbackComment => _feedbackComment;
   bool get isSubmittingFeedback => _isSubmittingFeedback;
+  Set<int> get completedContentIds => _completedContentIds;
+  double get courseProgress => _courseProgress;
+  int get totalContents => _totalContents;
+
+  bool isContentCompleted(int contentId) {
+    return _completedContentIds.contains(contentId);
+  }
 
   void setCurso(CursoModel curso) {
     _curso = curso;
@@ -52,7 +71,7 @@ class PainelCursoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadCurso(int cursoId, {BuildContext? context}) async {
+  Future<void> loadCurso(int cursoId, {BuildContext? context, bool navigateToUncompleted = true}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -71,8 +90,13 @@ class PainelCursoViewModel extends ChangeNotifier {
 
         _calculateProgress();
 
-        // Auto-selecionar primeiro conteúdo se disponível
-        if (_sections.isNotEmpty && _sections[0].contents.isNotEmpty) {
+        // Carregar progresso do usuário primeiro
+        await loadUserProgress();
+
+        // Navegar para o primeiro conteúdo não concluído ou auto-selecionar primeiro conteúdo
+        if (navigateToUncompleted) {
+          navigateToFirstUncompletedContent();
+        } else if (_sections.isNotEmpty && _sections[0].contents.isNotEmpty) {
           setCurrentContent(0, 0);
         }
       } else {
@@ -131,10 +155,11 @@ class PainelCursoViewModel extends ChangeNotifier {
 
       _calculateProgress();
 
-      // Auto-select first content if available
-      if (_sections.isNotEmpty && _sections[0].contents.isNotEmpty) {
-        setCurrentContent(0, 0);
-      }
+      // Carregar progresso do usuário
+      await loadUserProgress();
+
+      // Navegar para o primeiro conteúdo não concluído
+      navigateToFirstUncompletedContent();
 
       notifyListeners();
     } catch (e) {
@@ -158,6 +183,10 @@ class PainelCursoViewModel extends ChangeNotifier {
         _sections[sectionIndex].contents.isNotEmpty &&
         contentIndex < _sections[sectionIndex].contents.length) {
       _currentContent = _sections[sectionIndex].contents[contentIndex];
+
+      // Reset the completion flag for the new content
+      _hasMarkedCurrentContentComplete = _completedContentIds.contains(_currentContent!.id);
+
       notifyListeners();
     }
   }
@@ -192,6 +221,7 @@ class PainelCursoViewModel extends ChangeNotifier {
   void _calculateProgress() {
     if (_sections.isEmpty) {
       _progress = 0.0;
+      _totalContents = 0;
       return;
     }
 
@@ -201,6 +231,8 @@ class PainelCursoViewModel extends ChangeNotifier {
     for (var section in _sections) {
       totalContents += section.contents.length;
     }
+
+    _totalContents = totalContents;
 
     if (totalContents > 0) {
       _progress = completedContents / totalContents;
@@ -215,11 +247,31 @@ class PainelCursoViewModel extends ChangeNotifier {
   }
 
   String? validateFeedback(String? value) {
-    // Aceita qualquer tamanho de comentário
+    // Verifica se o comentário está vazio
     if (value == null || value.trim().isEmpty) {
       return 'O comentário não pode estar vazio';
     }
+
+    // Verifica se contém profanidades
+    if (_containsProfanity(value)) {
+      return 'Seu comentário contém linguagem inapropriada. Por favor, tenha mais respeito.';
+    }
+
     return null;
+  }
+
+  // Verifica se o texto contém palavras ofensivas
+  bool _containsProfanity(String text) {
+    final lowerText = text.toLowerCase();
+
+    // Divide o texto em palavras e remove pontuação
+    final words = lowerText.split(RegExp(r'\s+'));
+
+    return words.any((word) {
+      // Remove caracteres especiais e pontuação
+      final cleanWord = word.replaceAll(RegExp(r'[.,/#!$%^&*;:{}=\-_`~()]'), '');
+      return _profanityList.contains(cleanWord);
+    });
   }
 
   Future<bool> submitFeedback(BuildContext context, String comment) async {
@@ -228,7 +280,7 @@ class PainelCursoViewModel extends ChangeNotifier {
     if (feedbackError != null) {
       _errorMessage = feedbackError;
       notifyListeners();
-      Helpers.showWarning(context, feedbackError);
+      await Helpers.showWarningDialog(context, feedbackError);
       return false;
     }
 
@@ -306,7 +358,7 @@ class PainelCursoViewModel extends ChangeNotifier {
     if (feedbackError != null) {
       _errorMessage = feedbackError;
       notifyListeners();
-      Helpers.showWarning(context, feedbackError);
+      await Helpers.showWarningDialog(context, feedbackError);
       return false;
     }
 
@@ -375,4 +427,207 @@ class PainelCursoViewModel extends ChangeNotifier {
 
     return [...userFeedback, ...otherFeedbacks];
   }
+
+  Future<void> onVideoProgressUpdate(double progressPercentage) async {
+    if (_currentContent == null || _curso == null || _currentSectionIndex == null) return;
+
+    // Apenas marcar como concluído quando atingir >= 95%
+    if (progressPercentage < 95) return;
+
+    // IMPORTANTE: Verificar se já está marcado como concluído (evita marcação duplicada)
+    // Verifica tanto a flag local quanto a lista global de IDs completados
+    if (_hasMarkedCurrentContentComplete || _completedContentIds.contains(_currentContent!.id)) {
+      if (!_hasMarkedCurrentContentComplete) {
+        _hasMarkedCurrentContentComplete = true; // Atualiza flag se estava desatualizada
+      }
+      return;
+    }
+
+    final userId = await _getUserId();
+    if (userId == null) {
+      debugPrint('[PainelCursoViewModel] UserId não encontrado');
+      return;
+    }
+
+    // Marcar como concluído ANTES de fazer a requisição
+    _hasMarkedCurrentContentComplete = true;
+
+    try {
+      final currentSection = _sections[_currentSectionIndex!];
+      await _userProgressService.markContentAsCompleted(
+        _curso!.id!,
+        currentSection.id!,
+        _currentContent!.id!,
+        userId,
+      );
+
+      // Adicionar à lista de concluídos
+      _completedContentIds.add(_currentContent!.id!);
+
+      debugPrint('[PainelCursoViewModel] Conteúdo marcado como concluído: ${_currentContent!.id} (${progressPercentage.toStringAsFixed(1)}%)');
+
+      // Recarregar progresso para atualizar porcentagem
+      await loadUserProgress();
+    } catch (e) {
+      debugPrint('[PainelCursoViewModel] Erro ao atualizar progresso: $e');
+      // Reverter flag em caso de erro
+      _hasMarkedCurrentContentComplete = false;
+    }
+  }
+
+  Future<void> onPdfCompleted() async {
+    if (_currentContent == null || _curso == null || _currentSectionIndex == null) return;
+
+    // IMPORTANTE: Verificar se já está marcado como concluído (evita marcação duplicada)
+    // Verifica tanto a flag local quanto a lista global de IDs completados
+    if (_hasMarkedCurrentContentComplete || _completedContentIds.contains(_currentContent!.id)) {
+      if (!_hasMarkedCurrentContentComplete) {
+        _hasMarkedCurrentContentComplete = true; // Atualiza flag se estava desatualizada
+      }
+      debugPrint('[PainelCursoViewModel] PDF já está marcado como concluído');
+      return;
+    }
+
+    final userId = await _getUserId();
+    if (userId == null) {
+      debugPrint('[PainelCursoViewModel] UserId não encontrado');
+      return;
+    }
+
+    // Marcar como concluído ANTES de fazer a requisição
+    _hasMarkedCurrentContentComplete = true;
+
+    try {
+      final currentSection = _sections[_currentSectionIndex!];
+      await _userProgressService.markContentAsCompleted(
+        _curso!.id!,
+        currentSection.id!,
+        _currentContent!.id!,
+        userId,
+      );
+
+      // Adicionar à lista de concluídos
+      _completedContentIds.add(_currentContent!.id!);
+
+      debugPrint('[PainelCursoViewModel] PDF marcado como concluído (chegou na última página ou 95% de scroll)');
+
+      // Recarregar progresso para atualizar porcentagem
+      await loadUserProgress();
+    } catch (e) {
+      debugPrint('[PainelCursoViewModel] Erro ao marcar PDF como concluído: $e');
+      // Reverter flag em caso de erro
+      _hasMarkedCurrentContentComplete = false;
+    }
+  }
+
+  Future<void> markCurrentContentAsCompleted() async {
+    if (_currentContent == null || _curso == null || _currentSectionIndex == null) return;
+
+    // IMPORTANTE: Verificar se já está marcado como concluído (evita marcação duplicada)
+    // Verifica tanto a flag local quanto a lista global de IDs completados
+    if (_hasMarkedCurrentContentComplete || _completedContentIds.contains(_currentContent!.id)) {
+      if (!_hasMarkedCurrentContentComplete) {
+        _hasMarkedCurrentContentComplete = true; // Atualiza flag se estava desatualizada
+      }
+      debugPrint('[PainelCursoViewModel] Conteúdo já está marcado como concluído');
+      return;
+    }
+
+    final userId = await _getUserId();
+    if (userId == null) {
+      debugPrint('[PainelCursoViewModel] UserId não encontrado');
+      return;
+    }
+
+    // Marcar como concluído ANTES de fazer a requisição
+    _hasMarkedCurrentContentComplete = true;
+
+    try {
+      final currentSection = _sections[_currentSectionIndex!];
+      await _userProgressService.markContentAsCompleted(
+        _curso!.id!,
+        currentSection.id!,
+        _currentContent!.id!,
+        userId,
+      );
+
+      // Adicionar à lista de concluídos
+      _completedContentIds.add(_currentContent!.id!);
+
+      debugPrint('[PainelCursoViewModel] Conteúdo marcado como concluído manualmente');
+
+      // Recarregar progresso para atualizar porcentagem
+      await loadUserProgress();
+    } catch (e) {
+      debugPrint('[PainelCursoViewModel] Erro ao marcar conteúdo como concluído: $e');
+      // Reverter flag em caso de erro
+      _hasMarkedCurrentContentComplete = false;
+    }
+  }
+
+  Future<void> loadUserProgress() async {
+    if (_curso == null) return;
+
+    final userId = await _getUserId();
+    if (userId == null) return;
+
+    try {
+      final progressData = await _userProgressService.getUserProgress(_curso!.id!, userId);
+      final completedContents = progressData['completedContents'] as List?;
+      final completePercentage = progressData['completePercentage'] as double?;
+
+      // Atualizar lista de conteúdos concluídos
+      if (completedContents != null) {
+        _completedContentIds = completedContents
+            .map((c) => c['contentId'] as int)
+            .toSet();
+      }
+
+      // Atualizar porcentagem de progresso
+      _courseProgress = completePercentage ?? 0.0;
+
+      debugPrint('[PainelCursoViewModel] Progresso carregado: ${_completedContentIds.length} conteúdos concluídos');
+      debugPrint('[PainelCursoViewModel] Porcentagem: ${(_courseProgress * 100).toStringAsFixed(1)}%');
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[PainelCursoViewModel] Erro ao carregar progresso: $e');
+    }
+  }
+
+  // Encontra o primeiro conteúdo não concluído
+  Map<String, int>? findFirstUncompletedContent() {
+    for (int sectionIndex = 0; sectionIndex < _sections.length; sectionIndex++) {
+      final section = _sections[sectionIndex];
+      for (int contentIndex = 0; contentIndex < section.contents.length; contentIndex++) {
+        final content = section.contents[contentIndex];
+        if (content.id != null && !_completedContentIds.contains(content.id)) {
+          debugPrint('[PainelCursoViewModel] Primeiro conteúdo não concluído encontrado: Seção $sectionIndex, Conteúdo $contentIndex');
+          return {
+            'sectionIndex': sectionIndex,
+            'contentIndex': contentIndex,
+          };
+        }
+      }
+    }
+    debugPrint('[PainelCursoViewModel] Nenhum conteúdo não concluído encontrado');
+    return null;
+  }
+
+  // Navegar para o primeiro conteúdo não concluído após carregar o progresso
+  void navigateToFirstUncompletedContent() {
+    final uncompletedContent = findFirstUncompletedContent();
+    if (uncompletedContent != null) {
+      setCurrentContent(
+        uncompletedContent['sectionIndex']!,
+        uncompletedContent['contentIndex']!,
+      );
+    } else {
+      // Se todos estão concluídos, vai para o primeiro
+      if (_sections.isNotEmpty && _sections[0].contents.isNotEmpty) {
+        setCurrentContent(0, 0);
+      }
+    }
+  }
 }
+

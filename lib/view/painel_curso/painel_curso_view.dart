@@ -13,6 +13,7 @@ import '../../services/course_service.dart';
 import '../../services/section_service.dart';
 import '../../services/content_service.dart';
 import '../../services/feedback_service.dart';
+import '../../services/user_progress_service.dart';
 import '../../model/course_model.dart';
 import '../../model/content_model.dart';
 
@@ -48,12 +49,14 @@ class _PainelCursoViewState extends State<PainelCursoView> {
         final sectionService = SectionService(apiService);
         final contentService = ContentService(apiService);
         final feedbackService = FeedbackService(apiService);
+        final userProgressService = UserProgressService(apiService);
 
         _viewModel = PainelCursoViewModel(
           cursoService,
           sectionService,
           contentService,
           feedbackService,
+          userProgressService,
         );
         _viewModel.loadCurso(_curso!.id!, context: context);
       }
@@ -287,6 +290,8 @@ class _PainelCursoViewState extends State<PainelCursoView> {
                         },
                       ),
 
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -360,7 +365,7 @@ class _PainelCursoViewState extends State<PainelCursoView> {
                       ),
                       clipBehavior: Clip.hardEdge,
                       child: hasContent
-                          ? _buildContentPlayer(currentContent, isDark)
+                          ? _buildContentPlayer(currentContent, isDark, viewModel)
                           : _buildEmptyState(isDark),
                     ),
                   ),
@@ -462,7 +467,7 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     );
   }
 
-  Widget _buildContentPlayer(ContentModel content, bool isDark) {
+  Widget _buildContentPlayer(ContentModel content, bool isDark, PainelCursoViewModel viewModel) {
     // Validar se fileUrl não está vazio
     if (content.fileUrl.isEmpty) {
       return _buildUrlMissingError(isDark, content);
@@ -472,12 +477,18 @@ class _PainelCursoViewState extends State<PainelCursoView> {
       return VideoPlayerWidget(
         key: ValueKey('video_${content.id}_${content.fileUrl}'),
         videoUrl: content.fileUrl,
+        onProgressUpdate: (progressPercentage) {
+          viewModel.onVideoProgressUpdate(progressPercentage);
+        },
       );
     } else if (content.contentType == ContentType.PDF) {
       return PdfViewerWidget(
         key: ValueKey('pdf_${content.id}_${content.fileUrl}'),
         pdfUrl: content.fileUrl,
         fileName: content.fileName,
+        onPdfCompleted: () {
+          viewModel.onPdfCompleted();
+        },
       );
     } else {
       return _buildUnsupportedContent(isDark);
@@ -719,10 +730,14 @@ class _PainelCursoViewState extends State<PainelCursoView> {
           children: [
             // Ícone de status/play
             Icon(
-              isSelected ? Icons.play_arrow : Icons.radio_button_unchecked,
-              color: isSelected
-                  ? AppColors.primaryButton
-                  : (isDark ? Colors.white.withAlpha(100) : AppColors.inputColor),
+              viewModel.isContentCompleted(content.id ?? 0)
+                  ? Icons.check_circle
+                  : (isSelected ? Icons.play_arrow : Icons.radio_button_unchecked),
+              color: viewModel.isContentCompleted(content.id ?? 0)
+                  ? Colors.green
+                  : (isSelected
+                      ? AppColors.primaryButton
+                      : (isDark ? Colors.white.withAlpha(100) : AppColors.inputColor)),
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -978,11 +993,11 @@ class _PainelCursoViewState extends State<PainelCursoView> {
   Widget _buildAddCommentButton(PainelCursoViewModel viewModel, bool isDark) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 55,
       child: ElevatedButton(
         onPressed: () => _showAddCommentDialog(viewModel, isDark),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFA500),
+          backgroundColor: AppColors.primaryButton,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1006,6 +1021,9 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     for (var section in viewModel.sections) {
       totalContents += section.contents.length;
     }
+
+    final completedCount = viewModel.completedContentIds.length;
+    final progressPercentage = (viewModel.courseProgress * 100).toInt();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1035,7 +1053,7 @@ class _PainelCursoViewState extends State<PainelCursoView> {
                 ),
               ),
               Text(
-                '${(viewModel.progress * 100).toInt()}%',
+                '$progressPercentage%',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -1048,7 +1066,7 @@ class _PainelCursoViewState extends State<PainelCursoView> {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: viewModel.progress,
+              value: viewModel.courseProgress,
               backgroundColor: isDark
                   ? AppColors.inputColor.withAlpha(30)
                   : AppColors.borderColor.withAlpha(100),
@@ -1057,14 +1075,38 @@ class _PainelCursoViewState extends State<PainelCursoView> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Total de aulas: $totalContents',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: isDark
-                  ? Colors.white.withAlpha(150)
-                  : AppColors.inputColor,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Concluídos: $completedCount de $totalContents conteúdos',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: isDark
+                      ? Colors.white.withAlpha(150)
+                      : AppColors.inputColor,
+                ),
+              ),
+              if (progressPercentage == 100)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Completo',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
         ],
       ),
@@ -1077,105 +1119,129 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-          title: Text(
-            'Adicionar Comentário',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : AppColors.textColor,
+        return ChangeNotifierProvider.value(
+          value: viewModel,
+          child: AlertDialog(
+            backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: TextField(
-              controller: commentController,
-              maxLines: 6,
+            insetPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 24),
+            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            title: Text(
+              'Adicionar Comentário',
               style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : AppColors.textColor,
               ),
-              decoration: InputDecoration(
-                hintText: 'Digite seu comentário...',
-                hintStyle: GoogleFonts.inter(
-                  color: isDark
-                      ? Colors.white.withAlpha(100)
-                      : AppColors.inputColor,
+            ),
+            content: SizedBox(
+              width: MediaQuery
+                  .of(context)
+                  .size
+                  .width,
+              child: TextField(
+                controller: commentController,
+                maxLines: 6,
+                style: GoogleFonts.inter(
+                  color: isDark ? Colors.white : AppColors.textColor,
                 ),
-                contentPadding: const EdgeInsets.all(16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
+                decoration: InputDecoration(
+                  hintText: 'Digite seu comentário...',
+                  hintStyle: GoogleFonts.inter(
                     color: isDark
-                        ? AppColors.inputColor.withAlpha(50)
-                        : AppColors.borderColor,
+                        ? Colors.white.withAlpha(100)
+                        : AppColors.inputColor,
                   ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: isDark
-                        ? AppColors.inputColor.withAlpha(50)
-                        : AppColors.borderColor,
+                  contentPadding: const EdgeInsets.all(16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.inputColor.withAlpha(50)
+                          : AppColors.borderColor,
+                    ),
                   ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.primaryButton,
-                    width: 2,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.inputColor.withAlpha(50)
+                          : AppColors.borderColor,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.primaryButton,
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                ),
+                child: Text(
+                  'Cancelar',
+                  style: GoogleFonts.inter(
+                    color: isDark ? Colors.white.withAlpha(150) : AppColors
+                        .inputColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Consumer<PainelCursoViewModel>(
+                builder: (context, vm, child) {
+                  return ElevatedButton(
+                    onPressed: vm.isSubmittingFeedback ? null : () async {
+                      if (commentController.text.isNotEmpty) {
+                        final success = await viewModel.submitFeedback(
+                            context, commentController.text);
+                        if (success) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryButton,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: vm.isSubmittingFeedback
+                        ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Text(
+                      'Enviar',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: Text(
-                'Cancelar',
-                style: GoogleFonts.inter(
-                  color: isDark ? Colors.white.withAlpha(150) : AppColors.inputColor,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () async {
-                if (commentController.text.isNotEmpty) {
-                  final success = await viewModel.submitFeedback(context, commentController.text);
-                  if (success) {
-                    Navigator.of(context).pop();
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryButton,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Enviar',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         );
-      },
+      }
     );
   }
 
@@ -1191,110 +1257,133 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-          title: Text(
-            'Editar Comentário',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : AppColors.textColor,
+        return ChangeNotifierProvider.value(
+          value: viewModel,
+          child: AlertDialog(
+            backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: TextField(
-              controller: commentController,
-              maxLines: 6,
-              autofocus: true,
+            insetPadding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 24),
+            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            title: Text(
+              'Editar Comentário',
               style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : AppColors.textColor,
               ),
-              decoration: InputDecoration(
-                hintText: 'Digite seu comentário...',
-                hintStyle: GoogleFonts.inter(
-                  color: isDark
-                      ? Colors.white.withAlpha(100)
-                      : AppColors.inputColor,
-                ),
-                contentPadding: const EdgeInsets.all(16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: isDark
-                        ? AppColors.inputColor.withAlpha(50)
-                        : AppColors.borderColor,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: isDark
-                        ? AppColors.inputColor.withAlpha(50)
-                        : AppColors.borderColor,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.primaryButton,
-                    width: 2,
-                  ),
-                ),
-              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: Text(
-                'Cancelar',
+            content: SizedBox(
+              width: MediaQuery
+                  .of(context)
+                  .size
+                  .width,
+              child: TextField(
+                controller: commentController,
+                maxLines: 6,
+                autofocus: true,
                 style: GoogleFonts.inter(
-                  color: isDark ? Colors.white.withAlpha(150) : AppColors.inputColor,
+                  color: isDark ? Colors.white : AppColors.textColor,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Digite seu comentário...',
+                  hintStyle: GoogleFonts.inter(
+                    color: isDark
+                        ? Colors.white.withAlpha(100)
+                        : AppColors.inputColor,
+                  ),
+                  contentPadding: const EdgeInsets.all(16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.inputColor.withAlpha(50)
+                          : AppColors.borderColor,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.inputColor.withAlpha(50)
+                          : AppColors.borderColor,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppColors.primaryButton,
+                      width: 2,
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () async {
-                if (commentController.text.isNotEmpty) {
-                  final success = await viewModel.updateFeedback(
-                    context,
-                    feedback.id!,
-                    commentController.text,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                ),
+                child: Text(
+                  'Cancelar',
+                  style: GoogleFonts.inter(
+                    color: isDark ? Colors.white.withAlpha(150) : AppColors
+                        .inputColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Consumer<PainelCursoViewModel>(
+                builder: (context, vm, child) {
+                  return ElevatedButton(
+                    onPressed: vm.isSubmittingFeedback ? null : () async {
+                      if (commentController.text.isNotEmpty) {
+                        final success = await viewModel.updateFeedback(
+                          context,
+                          feedback.id!,
+                          commentController.text,
+                        );
+                        if (success) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryButton,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: vm.isSubmittingFeedback
+                        ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Text(
+                      'Salvar',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   );
-                  if (success) {
-                    Navigator.of(context).pop();
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryButton,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                },
               ),
-              child: Text(
-                'Salvar',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         );
-      },
+      }
     );
   }
 
@@ -1306,63 +1395,82 @@ class _PainelCursoViewState extends State<PainelCursoView> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Remover Comentário',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : AppColors.textColor,
+        return ChangeNotifierProvider.value(
+          value: viewModel,
+          child: AlertDialog(
+            backgroundColor: isDark ? AppColors.primaryColor : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          content: Text(
-            'Tem certeza que deseja remover seu comentário?',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: isDark ? Colors.white.withAlpha(200) : AppColors.textColor,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancelar',
-                style: GoogleFonts.inter(
-                  color: isDark ? Colors.white.withAlpha(150) : AppColors.inputColor,
-                ),
+            title: Text(
+              'Remover Comentário',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : AppColors.textColor,
               ),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final success = await viewModel.deleteFeedback(
-                  context,
-                  feedback.id!,
-                );
-                if (success) {
-                  Navigator.of(context).pop();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isDark ? Colors.red.shade400 : Colors.red,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Remover',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                ),
+            content: Text(
+              'Tem certeza que deseja remover seu comentário?',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: isDark ? Colors.white.withAlpha(200) : AppColors
+                    .textColor,
               ),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Cancelar',
+                  style: GoogleFonts.inter(
+                    color: isDark ? Colors.white.withAlpha(150) : AppColors
+                        .inputColor,
+                  ),
+                ),
+              ),
+              Consumer<PainelCursoViewModel>(
+                builder: (context, vm, child) {
+                  return ElevatedButton(
+                    onPressed: vm.isSubmittingFeedback ? null : () async {
+                      final success = await viewModel.deleteFeedback(
+                        context,
+                        feedback.id!,
+                      );
+                      if (success) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.red.shade400 : Colors
+                          .red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: vm.isSubmittingFeedback
+                        ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Text(
+                      'Remover',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         );
-      },
+      }
     );
   }
 }

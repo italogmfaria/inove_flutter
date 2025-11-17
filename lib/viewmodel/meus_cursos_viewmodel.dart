@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../model/course_model.dart';
 import '../services/user_service.dart';
+import '../services/user_progress_service.dart';
 import '../core/utils/helpers.dart';
 
 class MeusCursosViewModel extends ChangeNotifier {
   final UserService _userService;
+  final UserProgressService _userProgressService;
 
   List<CursoModel> _meusCursos = [];
   bool _isLoading = false;
   String? _errorMessage;
+  Map<int, double> _courseProgressMap = {}; // courseId -> progress percentage
 
-  MeusCursosViewModel(this._userService);
+  MeusCursosViewModel(this._userService, this._userProgressService);
 
   List<CursoModel> get meusCursos => _meusCursos;
   bool get isLoading => _isLoading;
@@ -23,6 +27,10 @@ class MeusCursosViewModel extends ChangeNotifier {
 
     try {
       _meusCursos = await _userService.getMyCourses();
+
+      // Carregar progresso para cada curso
+      await _loadProgressForAllCourses();
+
       _isLoading = false;
       _errorMessage = null; // Limpa qualquer erro anterior
       notifyListeners();
@@ -36,19 +44,38 @@ class MeusCursosViewModel extends ChangeNotifier {
     }
   }
 
-  // TODO: Quando o backend estiver pronto, substitua este valor pelo progresso real do usuário
-  double getCourseProgress(CursoModel curso) {
-    // Valor padrão temporário: varia entre 20% e 75%
-    // Futuramente, este valor virá do backend
-    final progressMap = {
-      0: 0.75, // 75%
-      1: 0.40, // 40%
-      2: 0.20, // 20%
-    };
+  // Carregar progresso de todos os cursos
+  Future<void> _loadProgressForAllCourses() async {
+    final userId = await _getUserId();
+    if (userId == null) {
+      debugPrint('[MeusCursosViewModel] UserId não encontrado');
+      return;
+    }
 
-    // Usa o ID do curso ou índice para variar o progresso
-    final index = curso.id != null ? curso.id! % 3 : 0;
-    return progressMap[index] ?? 0.30;
+    for (var curso in _meusCursos) {
+      if (curso.id != null) {
+        try {
+          final progressData = await _userProgressService.getUserProgress(curso.id!, userId);
+          final completePercentage = progressData['completePercentage'] as double?;
+          _courseProgressMap[curso.id!] = completePercentage ?? 0.0;
+        } catch (e) {
+          debugPrint('[MeusCursosViewModel] Erro ao carregar progresso do curso ${curso.id}: $e');
+          _courseProgressMap[curso.id!] = 0.0;
+        }
+      }
+    }
+  }
+
+  // Obter userId do storage
+  Future<int?> _getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('userId');
+  }
+
+  // Obter progresso real do curso
+  double getCourseProgress(CursoModel curso) {
+    if (curso.id == null) return 0.0;
+    return _courseProgressMap[curso.id] ?? 0.0;
   }
 
   void navigateToCursoPainel(BuildContext context, CursoModel curso) {

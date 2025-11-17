@@ -6,10 +6,14 @@ import '../core/theme/app_colors.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
+  final Function(double progressPercentage)? onProgressUpdate;
+  final Function()? onVideoCompleted;
 
   const VideoPlayerWidget({
     super.key,
     required this.videoUrl,
+    this.onProgressUpdate,
+    this.onVideoCompleted,
   });
 
   @override
@@ -98,9 +102,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     if (duration.inMilliseconds > 0) {
       final progressPercentage = (position.inMilliseconds / duration.inMilliseconds) * 100;
 
+      widget.onProgressUpdate?.call(progressPercentage);
+
       if (progressPercentage >= 95 && !_hasEmittedCompletion) {
         _hasEmittedCompletion = true;
         debugPrint('[VideoPlayer] Vídeo concluído aos 95%');
+        widget.onVideoCompleted?.call();
       }
     }
 

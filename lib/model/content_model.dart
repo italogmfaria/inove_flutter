@@ -34,14 +34,11 @@ class ContentModel {
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
-    // Identificar o tipo de conteúdo
     ContentType type;
 
     if (json['contentType'] != null) {
-      // Tentar usar o contentType da API
       type = ContentType.fromJson(json['contentType']);
     } else {
-      // Fallback: identificar pelo nome do arquivo
       final fileName = (json['fileName'] ?? '').toString().toLowerCase();
       if (fileName.endsWith('.pdf')) {
         type = ContentType.PDF;
@@ -57,21 +54,18 @@ class ContentModel {
         if (fileUrl.contains('.pdf')) {
           type = ContentType.PDF;
         } else {
-          type = ContentType.VIDEO; // Default para VIDEO
+          type = ContentType.VIDEO;
         }
       }
     }
 
-    // Processar fileUrl - adicionar prefixo do S3 se necessário
     String fileUrlFinal = json['fileUrl'] ?? '';
 
-    // Se fileUrl está vazio, usa fileName como fallback
     if (fileUrlFinal.isEmpty) {
       fileUrlFinal = json['fileName'] ?? '';
     }
 
     if (fileUrlFinal.isNotEmpty && !fileUrlFinal.startsWith('http')) {
-      // Se não começa com http/https, adiciona o prefixo do S3 bucket
       const s3BucketUrl = 'https://inove-bucket-streaming.s3.amazonaws.com/';
       fileUrlFinal = s3BucketUrl + fileUrlFinal;
     }

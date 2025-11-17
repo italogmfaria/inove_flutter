@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/user_service.dart';
 import '../../services/file_service.dart';
+import '../../services/user_progress_service.dart';
 import '../../viewmodel/meus_cursos_viewmodel.dart';
 import '../../model/course_model.dart';
 import '../../widgets/background_decoration.dart';
@@ -29,7 +30,8 @@ class _MeusCursosViewState extends State<MeusCursosView> {
     super.initState();
     final apiService = Provider.of<ApiService>(context, listen: false);
     final userService = UserService(apiService);
-    _viewModel = MeusCursosViewModel(userService);
+    final userProgressService = UserProgressService(apiService);
+    _viewModel = MeusCursosViewModel(userService, userProgressService);
     _viewModel.loadMeusCursos(context: context);
     _searchController.addListener(() {
       setState(() {});

@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../services/user_service.dart';
 import '../../services/school_service.dart';
 import '../../services/file_service.dart';
+import '../../services/user_progress_service.dart';
 import '../../viewmodel/perfil_viewmodel.dart';
 import '../../model/course_model.dart';
 import '../../widgets/background_decoration.dart';
@@ -35,7 +36,8 @@ class _PerfilViewState extends State<PerfilView> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userService = UserService(apiService);
     final schoolService = SchoolService(apiService);
-    _viewModel = PerfilViewModel(userService, schoolService, authService);
+    final userProgressService = UserProgressService(apiService);
+    _viewModel = PerfilViewModel(userService, schoolService, authService, userProgressService);
     _viewModel.loadProfile(context: context);
   }
 
@@ -119,7 +121,7 @@ class _PerfilViewState extends State<PerfilView> {
           ),
         ),
         content: Text(
-          'Deseja remover sua inscrição do curso "${curso.name}"?\n\nVocê perderá todo o progresso realizado.',
+          'Deseja remover sua inscrição do curso "${curso.name}"?',
           style: GoogleFonts.inter(
             fontSize: 16,
             color: isDark ? Colors.white.withAlpha(200) : AppColors.textColor,
@@ -374,64 +376,6 @@ class _PerfilViewState extends State<PerfilView> {
 
                     const SizedBox(height: 24),
 
-                    // Meus Cursos Section
-                    Text(
-                      'Meus Cursos',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : AppColors.textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Courses List
-                    if (viewModel.isLoadingCourses)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark ? AppColors.primaryButton : AppColors.primaryColor,
-                            ),
-                          ),
-                        ),
-                      )
-                    else if (viewModel.myCourses.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.primaryColor : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.inputColor.withAlpha(60)
-                                : AppColors.borderColor.withAlpha(100),
-                            width: 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Você ainda não está inscrito em nenhum curso',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: isDark
-                                  ? Colors.white.withAlpha(180)
-                                  : AppColors.inputColor,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Column(
-                        children: viewModel.myCourses.map((curso) {
-                          return _buildCourseCard(context, curso, isDark, viewModel);
-                        }).toList(),
-                      ),
-
-                    const SizedBox(height: 24),
-
                     // Action Buttons
                     SecondaryButton(
                       text: 'Editar Perfil',
@@ -458,8 +402,105 @@ class _PerfilViewState extends State<PerfilView> {
                       text: 'Sair',
                       onPressed: _handleLogout,
                     ),
+
+                    const SizedBox(height: 24),
+
+                    // Courses List
+                    if (viewModel.isLoadingCourses)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isDark ? AppColors.primaryButton : AppColors.primaryColor,
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (viewModel.myCourses.isEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Meus Cursos',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : AppColors.textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.primaryColor : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark
+                                    ? AppColors.inputColor.withAlpha(60)
+                                    : AppColors.borderColor.withAlpha(100),
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Você ainda não está inscrito em nenhum curso',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? Colors.white.withAlpha(180)
+                                      : AppColors.inputColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Em Andamento Section
+                          if (viewModel.coursesInProgress.isNotEmpty) ...[
+                            Text(
+                              'Em Andamento',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : AppColors.textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Column(
+                              children: viewModel.coursesInProgress.map((curso) {
+                                return _buildCourseCard(context, curso, isDark, viewModel);
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          // Concluídos Section
+                          if (viewModel.completedCourses.isNotEmpty) ...[
+                            Text(
+                              'Concluídos',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : AppColors.textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Column(
+                              children: viewModel.completedCourses.map((curso) {
+                                return _buildCourseCard(context, curso, isDark, viewModel);
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+
                     const SizedBox(height: 16),
-                        const SizedBox(height: 16),
                       ],
                     ),
                   );
@@ -607,16 +648,28 @@ class _PerfilViewState extends State<PerfilView> {
                                       : AppColors.inputColor,
                                 ),
                               ),
-                              Text(
-                                '$progressPercent%',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? AppColors.primaryButton
-                                      : AppColors.primaryButton,
+                              if (viewModel.isLoadingProgress)
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      isDark ? AppColors.primaryButton : AppColors.primaryButton,
+                                    ),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  '$progressPercent%',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppColors.primaryButton
+                                        : AppColors.primaryButton,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
